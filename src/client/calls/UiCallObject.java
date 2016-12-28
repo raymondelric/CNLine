@@ -30,4 +30,7 @@ public abstract class UiCallObject{
 		whatCall = _whatCall;
 		type = _type;
 	}
+	public void print() { //debug
+		System.out.println("debug");
+	}
 }
