@@ -12,5 +12,13 @@ public class test{
 		UiCallObject UI = (UiCallObject)rc;
 		RC.print();
 		UI.print();
+		LoginCall lc = new LoginCall("lc","lcpswd");
+		UiCallObject ui2 = new LoginCall("ui2","ui2pswd");
+		lc.print();
+		ui2.print();
+		LoginCall LC = (LoginCall)ui2;
+		UiCallObject UI2 = (UiCallObject)lc;
+		LC.print();
+		UI2.print();
 	}
 }

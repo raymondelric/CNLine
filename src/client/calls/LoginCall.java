@@ -2,11 +2,11 @@ package client.calls;
 import java.util.*; //useful stuff
 import java.nio.charset.Charset; //for encoding problems
 
-public class RegisterCall extends UiCallObject{
+public class LoginCall extends UiCallObject{
 	public String id;
 	public String pswd;
-	public RegisterCall(String _id, String _pswd){
-		super(REGISTER, REQUEST);
+	public LoginCall(String _id, String _pswd){
+		super(LOGIN, REQUEST);
 		this.id = _id;
 		this.pswd = _pswd;
 	}
