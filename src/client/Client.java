@@ -12,9 +12,9 @@ public class Client{
 	private static UI ui;
 	private static Socket sock;
 	private static PrintStream sockwriter;
+	private static boolean leave, connected;
 
-	public static void main(String[] args) throws Exception{
-
+	public static void main(String[] args) {
 		//init queues
 		toUI = new LinkedList<UiCallObject>();
 		fromUI = new LinkedList<UiCallObject>();
@@ -26,7 +26,13 @@ public class Client{
 		}
 		}).start();
 
-		while(true){
+		run();
+	}
+	
+	public static void run() {
+		connected = false;
+		leave = false;
+		while(!leave){
 			
 			try{
 				Thread.sleep(0); // without this, client behaves very very very wierd
@@ -48,13 +54,16 @@ public class Client{
 							break;
 						case UiCallObject.EXIT:
 							System.out.println("Exit");
+							leave = true;
 							break;
 						case UiCallObject.CONNECT_TO_SERVER:
 							System.out.println("Connect to server");
-							ConnectCall Req = (ConnectCall)req;
-							sock = new Socket(Req.ip, Req.port);
-							sockwriter = new PrintStream(sock.getOutputStream());
-							sockwriter.println("Happy New Year!");
+							if(connect(req)){
+								connected=true;
+								toUI.offer(new ConnectResult(true));
+							} else{
+								toUI.offer(new ConnectResult(false));
+							}
 							break;
 						case UiCallObject.SEND_MESSAGE:
 							break;
@@ -78,5 +87,19 @@ public class Client{
 			}
 			//maybe read something from server and push it into the toUI queue if needed here
 		}//end of while loop
+	}
+
+	public static boolean connect(UiCallObject _req) {
+		ConnectCall connectReq = (ConnectCall)_req;
+		try{
+			sock = new Socket(connectReq.ip, connectReq.port);
+			sockwriter = new PrintStream(sock.getOutputStream());
+			sockwriter.println("Happy New Year!");
+		} catch(Exception e){
+			System.out.println("Connect Fail");
+			return false;
+		}
+		System.out.println("Connect Success");
+		return true;
 	}
 }

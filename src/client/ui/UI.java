@@ -35,6 +35,7 @@ public class UI{
 	public void run(){
 		int id = 1;
 		int pswd = -1;
+		boolean connected = false;
 		while(true){
 			id++;
 			pswd--;
@@ -45,7 +46,7 @@ public class UI{
 			else if(id%5==2)
 				toMain.offer(new LogoutCall());
 			else if(id%5==3)
-				toMain.offer(new ExitCall());
+				toMain.offer(new ConnectCall("140.112.30.52",6655)); // oasis2
 			else
 				toMain.offer(new ConnectCall("140.112.30.52",5566)); // oasis2
 
@@ -54,8 +55,9 @@ public class UI{
 			} catch(InterruptedException e){}
 
 			if(fromMain.peek() != null){ //has stuff to do
-				if(fromMain.peek().type == UiCallObject.REQUEST){
-					switch(fromMain.peek().whatCall){
+				UiCallObject req = fromMain.peek();
+				if(req.type == UiCallObject.REQUEST){
+					switch(req.whatCall){
 						//handle the cases (usually push something into the toMain queue)
 						case UiCallObject.REGISTER:
 						break;
@@ -83,7 +85,13 @@ public class UI{
 					}
 					fromMain.poll(); //handled, pop the request from queue
 				}else{ //response from Main (usually show something on screen)
-					
+					switch(req.whatCall){
+						case UiCallObject.CONNECT_RESULT:
+							ConnectResult conn_res = (ConnectResult)req;
+							connected = conn_res.result;
+							System.out.println(connected);
+							break;
+					}
 					fromMain.poll(); //handled, pop the request from queue
 				}
 			}
