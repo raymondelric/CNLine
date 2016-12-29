@@ -36,11 +36,18 @@ public class UI{
 		int id = 1;
 		int pswd = -1;
 		while(true){
-			
-			if(id%2==1)
-				toMain.offer(new RegisterCall(Integer.toString(id++),Integer.toString(pswd--)));
+			id++;
+			pswd--;
+			if(id%5==0)
+				toMain.offer(new RegisterCall(Integer.toString(id),Integer.toString(pswd)));
+			else if(id%5==1)
+				toMain.offer(new LoginCall(Integer.toString(id),Integer.toString(pswd)));
+			else if(id%5==2)
+				toMain.offer(new LogoutCall());
+			else if(id%5==3)
+				toMain.offer(new ExitCall());
 			else
-				toMain.offer(new LoginCall(Integer.toString(id++),Integer.toString(pswd--)));
+				toMain.offer(new ConnectCall("140.112.30.52",5566)); // oasis2
 
 			try {
 				Thread.sleep(1000);

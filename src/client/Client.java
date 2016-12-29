@@ -10,8 +10,10 @@ public class Client{
 	private static Queue<UiCallObject> fromUI; //read only
 	private static Queue<UiCallObject> toUI; //write only
 	private static UI ui;
+	private static Socket sock;
+	private static PrintStream sockwriter;
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception{
 
 		//init queues
 		toUI = new LinkedList<UiCallObject>();
@@ -31,8 +33,9 @@ public class Client{
 			} catch(InterruptedException e){}
 			
 			if(fromUI.peek() != null) {
-				if(fromUI.peek().type == UiCallObject.REQUEST){
-					switch(fromUI.peek().whatCall){
+				UiCallObject req = fromUI.peek();
+				if(req.type == UiCallObject.REQUEST){
+					switch(req.whatCall){
 						//handle the cases(usually push something into the toUI queue)
 						case UiCallObject.REGISTER:
 							System.out.println("Register");
@@ -41,10 +44,17 @@ public class Client{
 							System.out.println("Login");
 							break;
 						case UiCallObject.LOGOUT:
+							System.out.println("Logout");
 							break;
 						case UiCallObject.EXIT:
+							System.out.println("Exit");
 							break;
 						case UiCallObject.CONNECT_TO_SERVER:
+							System.out.println("Connect to server");
+							ConnectCall Req = (ConnectCall)req;
+							sock = new Socket(Req.ip, Req.port);
+							sockwriter = new PrintStream(sock.getOutputStream());
+							sockwriter.println("Happy New Year!");
 							break;
 						case UiCallObject.SEND_MESSAGE:
 							break;
