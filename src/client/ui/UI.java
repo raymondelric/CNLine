@@ -35,7 +35,7 @@ public class UI{
 	public void run(){
 		int id = 1;
 		int pswd = -1;
-		boolean connected = false;
+		boolean connected = false, loggedin = false;
 		while(true){
 			id++;
 			pswd--;
@@ -87,9 +87,24 @@ public class UI{
 				}else{ //response from Main (usually show something on screen)
 					switch(req.whatCall){
 						case UiCallObject.CONNECT_RESULT:
-							ConnectResult conn_res = (ConnectResult)req;
-							connected = conn_res.result;
+							Result connectRes = (Result)req;
+							connected = connectRes.result;
 							System.out.println(connected);
+							break;
+						case UiCallObject.REGISTER_RESULT:
+							Result registerRes = (Result)req;
+							boolean registered = registerRes.result;
+							System.out.println(registered);
+							break;
+						case UiCallObject.LOGIN_RESULT:
+							Result loginRes = (Result)req;
+							loggedin = loginRes.result;
+							System.out.println(loggedin);
+							break;
+						case UiCallObject.LOGOUT_RESULT:
+							Result logoutRes = (Result)req;
+							boolean loggedout = logoutRes.result;
+							System.out.println(loggedout);
 							break;
 					}
 					fromMain.poll(); //handled, pop the request from queue

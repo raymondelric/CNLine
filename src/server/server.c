@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
 	int sockfd, cli_sockfd;
 	socklen_t clilen;
-	char buffer[16];
+	char buffer[100];
 	struct sockaddr_in cli_addr;
 	struct addrinfo hints, *serv;
 	int pid, pid2;
@@ -67,18 +67,18 @@ int main(int argc, char *argv[])
 		} else{
 				inet_ntop(AF_INET, &(cli_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
 				client_port = ntohs(cli_addr.sin_port);
+				
+				while(1){
 
-				int SEQ_NO = 0;
+					memset(buffer, 0, sizeof(buffer));
 
-				memset(buffer, 0, sizeof(buffer));
+					if((n = read(cli_sockfd, buffer, 100)) < 0){
+						fprintf(stderr, "read error\n");
+						exit(1);
+					}
 
-				if((n = read(cli_sockfd, buffer, 15)) < 0){
-					fprintf(stderr, "read error\n");
-					exit(1);
+					printf("recv from %s:%ld, msg = %s\n", client_ip, client_port, buffer);
 				}
-
-				printf("recv from %s:%ld, msg = %s\n", client_ip, client_port, buffer);
-
 				close(cli_sockfd);
 				exit(0);
 		}

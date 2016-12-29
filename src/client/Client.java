@@ -12,7 +12,8 @@ public class Client{
 	private static UI ui;
 	private static Socket sock;
 	private static PrintStream sockwriter;
-	private static boolean leave, connected;
+	private static boolean leave, connected, loggedin;
+	private static String user;
 
 	public static void main(String[] args) {
 		//init queues
@@ -32,6 +33,7 @@ public class Client{
 	public static void run() {
 		connected = false;
 		leave = false;
+		loggedin = false;
 		while(!leave){
 			
 			try{
@@ -42,27 +44,69 @@ public class Client{
 				UiCallObject req = fromUI.peek();
 				if(req.type == UiCallObject.REQUEST){
 					switch(req.whatCall){
-						//handle the cases(usually push something into the toUI queue)
 						case UiCallObject.REGISTER:
-							System.out.println("Register");
+							if(connected){
+								System.out.print("Register...");
+								if(register(req)){
+									toUI.offer(new Result(UiCallObject.REGISTER_RESULT, true));
+								} else{
+									toUI.offer(new Result(UiCallObject.REGISTER_RESULT, false));
+								}
+							} else{
+								System.out.println("Not connected yet");
+							}
 							break;
 						case UiCallObject.LOGIN:
-							System.out.println("Login");
+							if(connected){
+								System.out.print("Login...");
+								if(login(req)){
+									loggedin = true;
+									toUI.offer(new Result(UiCallObject.LOGIN_RESULT, true));
+								} else{
+									toUI.offer(new Result(UiCallObject.LOGIN_RESULT, false));
+								}
+							} else{
+								System.out.println("Not connected yet");
+							}
 							break;
 						case UiCallObject.LOGOUT:
-							System.out.println("Logout");
+							if(connected){
+								if(loggedin){
+									if(logout()){
+										System.out.println("Logout");
+										loggedin = false;
+										toUI.offer(new Result(UiCallObject.LOGOUT_RESULT, true));
+									} else{
+										toUI.offer(new Result(UiCallObject.LOGOUT_RESULT, false));
+									}
+								} else{
+									System.out.println("Not logged in yet");
+								}
+							} else{
+								System.out.println("Not connected yet");
+							}
 							break;
 						case UiCallObject.EXIT:
 							System.out.println("Exit");
+							if(connected){
+								logout();
+								connected=false;
+							}
+							// exit() / sock.close();
 							leave = true;
+							//toUI.offer();
 							break;
 						case UiCallObject.CONNECT_TO_SERVER:
-							System.out.println("Connect to server");
-							if(connect(req)){
-								connected=true;
-								toUI.offer(new ConnectResult(true));
+							if(connected){
+								System.out.println("Already connected");
 							} else{
-								toUI.offer(new ConnectResult(false));
+								System.out.print("Connect to server...");
+								if(connect(req)){
+									connected=true;
+									toUI.offer(new Result(UiCallObject.CONNECT_RESULT, true));
+								} else{
+									toUI.offer(new Result(UiCallObject.CONNECT_RESULT, false));
+								}
 							}
 							break;
 						case UiCallObject.SEND_MESSAGE:
@@ -94,12 +138,47 @@ public class Client{
 		try{
 			sock = new Socket(connectReq.ip, connectReq.port);
 			sockwriter = new PrintStream(sock.getOutputStream());
-			sockwriter.println("Happy New Year!");
+			sockwriter.print("Happy New Year!");
 		} catch(Exception e){
-			System.out.println("Connect Fail");
+			System.out.println("fail");
 			return false;
 		}
-		System.out.println("Connect Success");
+		System.out.println("success");
+		return true;
+	}
+	
+	public static boolean register(UiCallObject _req) {
+		RegisterCall registerReq = (RegisterCall)_req;
+		try{
+			sockwriter.print("register("+registerReq.id+", "+registerReq.pswd+")");
+		} catch(Exception e){
+			System.out.println("fail");
+			return false;
+		}
+		System.out.println("success");
+		return true;
+	}
+	
+	public static boolean login(UiCallObject _req) {
+		LoginCall loginReq = (LoginCall)_req;
+		try{
+			sockwriter.print("login("+loginReq.id+", "+loginReq.pswd+")");
+		} catch(Exception e){
+			System.out.println("fail");
+			return false;
+		}
+		user = loginReq.id;
+		System.out.println("success, user = "+user);
+		return true;
+	}
+	public static boolean logout() {		
+		try{
+			sockwriter.print("user "+user+" log out");
+		} catch(Exception e){
+			System.out.println("fail");
+			return false;
+		}
+		System.out.println("success");
 		return true;
 	}
 }

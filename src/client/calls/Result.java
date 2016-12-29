@@ -2,10 +2,10 @@ package client.calls;
 import java.util.*; //useful stuff
 import java.nio.charset.Charset; //for encoding problems
 
-public class ConnectResult extends UiCallObject{
+public class Result extends UiCallObject{
 	public boolean result;
-	public ConnectResult(boolean _result){
-		super(CONNECT_RESULT, RESPOND);
+	public Result(int _type, boolean _result){
+		super(_type, RESPOND);
 		this.result = _result;
 	}
 	public void print(){

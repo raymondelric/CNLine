@@ -12,8 +12,7 @@ public abstract class UiCallObject{
 	public static final int LOGIN = 1;
 	public static final int LOGOUT = 2;
 	public static final int CONNECT_TO_SERVER = 3;
-	public static final int CONNECT_RESULT = 4;
-	public static final int EXIT = 5;
+	public static final int EXIT = 4;
 
 	public static final int SEND_MESSAGE = 10;
 	public static final int GET_MESSAGE = 11;
@@ -21,6 +20,11 @@ public abstract class UiCallObject{
 	public static final int SEND_FILE = 20;
 	public static final int GET_FILE = 21;
 	public static final int DOWNLOAD_FILE = 22;
+
+	public static final int REGISTER_RESULT = 30;
+	public static final int LOGIN_RESULT = 31;
+	public static final int LOGOUT_RESULT = 32;
+	public static final int CONNECT_RESULT = 33;
 
 	//common variables
 	public final int type;
