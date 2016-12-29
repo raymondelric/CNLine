@@ -3,6 +3,7 @@ import java.util.*; //useful stuff
 import java.io.*; //read write files
 import java.nio.charset.Charset; //for encoding problems
 //UI stuff
+/*
 import javafx.animation.*;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -21,7 +22,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
-
+*/
 import client.calls.*;
 
 public class UI{
@@ -30,9 +31,22 @@ public class UI{
 	public UI(Queue<client.calls.UiCallObject> toUI, Queue<client.calls.UiCallObject> fromUI){
 		fromMain = toUI;
 		toMain = fromUI;
-
+	}
+	public void run(){
+		int id = 1;
+		int pswd = -1;
 		while(true){
-			if(fromMain.peek() != null){//has stuff to do
+			
+			if(id%2==1)
+				toMain.offer(new RegisterCall(Integer.toString(id++),Integer.toString(pswd--)));
+			else
+				toMain.offer(new LoginCall(Integer.toString(id++),Integer.toString(pswd--)));
+
+			try {
+				Thread.sleep(1000);
+			} catch(InterruptedException e){}
+
+			if(fromMain.peek() != null){ //has stuff to do
 				if(fromMain.peek().type == UiCallObject.REQUEST){
 					switch(fromMain.peek().whatCall){
 						//handle the cases (usually push something into the toMain queue)
