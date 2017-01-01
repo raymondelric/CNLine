@@ -1,5 +1,6 @@
 package client;
 import java.util.*; //useful stuff
+import java.util.concurrent.*;
 import java.io.*; //read write files
 import java.net.*; //socket
 import java.nio.charset.Charset; //for encoding problems
@@ -17,15 +18,27 @@ public class Client{
 
 	public static void main(String[] args) {
 		//init queues
-		toUI = new LinkedList<UiCallObject>();
-		fromUI = new LinkedList<UiCallObject>();
+		toUI = new LinkedBlockingQueue<UiCallObject>();
+		fromUI = new LinkedBlockingQueue<UiCallObject>();
 
 		//starts UI
-		ui = new client.ui.UI(toUI, fromUI);
-		new Thread(new Runnable(){ public void run(){
-			ui.run();
+		ui = new client.ui.UI();
+		ui.setQueue(toUI, fromUI);
+		try{
+				if(args[0].equals("UI")){
+				new Thread(new Runnable(){ public void run(){
+					ui.run(args);
+				}
+				}).start();
+			}else{
+				throw new ArrayIndexOutOfBoundsException();
+			}
+		}catch(ArrayIndexOutOfBoundsException e){
+			new Thread(new Runnable(){ public void run(){
+				ui.runTest();
+			}
+			}).start();
 		}
-		}).start();
 
 		run();
 	}
