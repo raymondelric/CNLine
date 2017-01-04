@@ -49,11 +49,9 @@ public class Client{
 		loggedin = false;
 		while(!leave){
 			
-			try{
-				Thread.sleep(0); // without this, client behaves very very very wierd
-			} catch(InterruptedException e){}
 			
-			if(fromUI.peek() != null) {
+			
+			if(!fromUI.isEmpty()) {
 				UiCallObject req = fromUI.peek();
 				if(req.type == UiCallObject.REQUEST){
 					switch(req.whatCall){
@@ -141,6 +139,10 @@ public class Client{
 					
 					fromUI.poll(); //handled, pop the request from queue
 				}
+			}else{ //UI queue is empty
+				try{
+					Thread.sleep(100); // Some idle time to prevent over using CPU
+				} catch(InterruptedException e){}
 			}
 			//maybe read something from server and push it into the toUI queue if needed here
 		}//end of while loop
