@@ -3,7 +3,7 @@ import java.util.*; //useful stuff
 import java.io.*; //read write files
 import java.nio.charset.Charset; //for encoding problems
 //UI stuff
-
+/*
 import javafx.animation.*;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -28,18 +28,20 @@ import javafx.scene.control.*;
 import javafx.scene.shape.*;
 import javafx.scene.text.*;
 import javafx.event.*;
-import client.calls.*;
 import javafx.scene.layout.*;
 import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
+*/
+import client.calls.*;
 
-public class UI extends Application{
-	public static String css = UI.class.getResource("/client/ui/style/style.css").toExternalForm();
+//public class UI extends Application{
+public class UI{
+	//public static String css = UI.class.getResource("/client/ui/style/style.css").toExternalForm();
 	private static Queue<client.calls.UiCallObject> fromMain; //read only
 	private static Queue<client.calls.UiCallObject> toMain; //write only
 	public int i;
-	public MainScreen s;
-	public SplashScreen splash;
+	//public MainScreen s;
+	//public SplashScreen splash;
 	//Testing code without GUI
 	public void runTest(){
 		int id = 1;
@@ -48,7 +50,9 @@ public class UI extends Application{
 		while(true){
 			id++;
 			pswd--;
-			if(id%5==0)
+			if(id==20)
+				toMain.offer(new ExitCall());
+			else if(id%5==0)
 				toMain.offer(new RegisterCall(Integer.toString(id),Integer.toString(pswd)));
 			else if(id%5==1)
 				toMain.offer(new LoginCall(Integer.toString(id),Integer.toString(pswd)));
@@ -126,6 +130,7 @@ public class UI extends Application{
 		fromMain = toUI;
 		toMain = fromUI;
 	}
+/*
 	@Override
     public void start(Stage mainWindow) throws Exception{
     	System.out.println("starting UI...");
@@ -532,4 +537,5 @@ class CommonUi{
         });
 	}
 	private static class Delta { double x, y; }
+*/
 }

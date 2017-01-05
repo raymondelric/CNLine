@@ -5,29 +5,50 @@ import java.io.*; //read write files
 import java.net.*; //socket
 import java.nio.charset.Charset; //for encoding problems
 import client.calls.*;
+import client.packet.*;
 import client.ui.*;
 
 public class Client{
 	private static Queue<UiCallObject> fromUI; //read only
 	private static Queue<UiCallObject> toUI; //write only
 	private static UI ui;
-	private static Socket sock;
-	private static PrintStream sockwriter;
-	private static boolean leave, connected, loggedin;
+	private static Socket socket;
+	private static PrintWriter out;
+	private static BufferedReader in;
+	private static char[] buffer;
+	private static int buffersize = 1000;
+	private static boolean IsConnected, IsLoggedIn, EXIT;
 	private static String user;
 
 	public static void main(String[] args) {
-		//init queues
+		initState();
+		initQueue();
+		initUI();
+		createUiThread(args);
+		run();
+	}
+
+	public static void initQueue() {
 		toUI = new LinkedBlockingQueue<UiCallObject>();
 		fromUI = new LinkedBlockingQueue<UiCallObject>();
-
-		//starts UI
+	}
+	
+	public static void initUI() {
 		ui = new client.ui.UI();
 		ui.setQueue(toUI, fromUI);
+	}
+
+	public static void initState() {
+		IsConnected = false;
+		IsLoggedIn = false;
+		EXIT = false;
+	}
+
+	public static void createUiThread(String[] args) {
 		try{
-				if(args[0].equals("UI")){
+			if(args[0].equals("UI")){
 				new Thread(new Runnable(){ public void run(){
-					ui.run(args);
+					//ui.run(args);
 				}
 				}).start();
 			}else{
@@ -39,86 +60,28 @@ public class Client{
 			}
 			}).start();
 		}
-
-		run();
 	}
-	
+
 	public static void run() {
-		connected = false;
-		leave = false;
-		loggedin = false;
-		while(!leave){
-			
-			
-			
+		while(!EXIT){
 			if(!fromUI.isEmpty()) {
-				UiCallObject req = fromUI.peek();
-				if(req.type == UiCallObject.REQUEST){
-					switch(req.whatCall){
+				UiCallObject call = fromUI.peek();
+				if(call.type == UiCallObject.REQUEST){
+					switch(call.whatCall){
+						case UiCallObject.CONNECT_TO_SERVER:
+							connect(call);
+							break;
 						case UiCallObject.REGISTER:
-							if(connected){
-								System.out.print("Register...");
-								if(register(req)){
-									toUI.offer(new Result(UiCallObject.REGISTER_RESULT, true));
-								} else{
-									toUI.offer(new Result(UiCallObject.REGISTER_RESULT, false));
-								}
-							} else{
-								System.out.println("Not connected yet");
-							}
+							register(call);
 							break;
 						case UiCallObject.LOGIN:
-							if(connected){
-								System.out.print("Login...");
-								if(login(req)){
-									loggedin = true;
-									toUI.offer(new Result(UiCallObject.LOGIN_RESULT, true));
-								} else{
-									toUI.offer(new Result(UiCallObject.LOGIN_RESULT, false));
-								}
-							} else{
-								System.out.println("Not connected yet");
-							}
+							login(call);
 							break;
 						case UiCallObject.LOGOUT:
-							if(connected){
-								if(loggedin){
-									if(logout()){
-										System.out.println("Logout");
-										loggedin = false;
-										toUI.offer(new Result(UiCallObject.LOGOUT_RESULT, true));
-									} else{
-										toUI.offer(new Result(UiCallObject.LOGOUT_RESULT, false));
-									}
-								} else{
-									System.out.println("Not logged in yet");
-								}
-							} else{
-								System.out.println("Not connected yet");
-							}
+							logout();
 							break;
 						case UiCallObject.EXIT:
-							System.out.println("Exit");
-							if(connected){
-								logout();
-								connected=false;
-							}
-							// exit() / sock.close();
-							leave = true;
-							//toUI.offer();
-							break;
-						case UiCallObject.CONNECT_TO_SERVER:
-							if(connected){
-								System.out.println("Already connected");
-							} else{
-								System.out.print("Connect to server...");
-								if(connect(req)){
-									connected=true;
-									toUI.offer(new Result(UiCallObject.CONNECT_RESULT, true));
-								} else{
-									toUI.offer(new Result(UiCallObject.CONNECT_RESULT, false));
-								}
-							}
+							exit();
 							break;
 						case UiCallObject.SEND_MESSAGE:
 							break;
@@ -148,52 +111,128 @@ public class Client{
 		}//end of while loop
 	}
 
-	public static boolean connect(UiCallObject _req) {
-		ConnectCall connectReq = (ConnectCall)_req;
-		try{
-			sock = new Socket(connectReq.ip, connectReq.port);
-			sockwriter = new PrintStream(sock.getOutputStream());
-			sockwriter.print("Happy New Year!");
-		} catch(Exception e){
-			System.out.println("fail");
-			return false;
+	public static void connect(UiCallObject _call) {
+		if(IsConnected){
+			System.out.println("Already Connected");
+		} else{
+			ConnectCall connectCall = (ConnectCall)_call;
+			try{
+				socket = new Socket(connectCall.ip, connectCall.port);
+				out = new PrintWriter(socket.getOutputStream(), true);
+				in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				buffer = new char[buffersize];
+
+				String msg = Packet.makeMsg(Packet.CONNECT, "Happy New Year!");
+				String ret = "";
+				out.println(msg);
+				int size = in.read(buffer, 0, buffersize);
+				if(size>0){
+					ret = (new String(buffer)).substring(0, size);
+				}
+				if(ret.equals(Packet.OK)){
+					IsConnected = true;
+					System.out.println("Connect OK");
+				} else{
+					System.out.println("Connect fail");
+				}
+			} catch(Exception e){
+				System.out.println("Connect fail");
+			}
 		}
-		System.out.println("success");
-		return true;
 	}
 	
-	public static boolean register(UiCallObject _req) {
-		RegisterCall registerReq = (RegisterCall)_req;
-		try{
-			sockwriter.print("register("+registerReq.id+", "+registerReq.pswd+")");
-		} catch(Exception e){
-			System.out.println("fail");
-			return false;
+	public static void register(UiCallObject _call) {
+		if(IsConnected){
+			RegisterCall registerCall = (RegisterCall)_call;
+			String msg = Packet.makeMsg(Packet.REGISTER, registerCall.id, registerCall.pswd);
+			String ret = "";
+			try{
+				out.println(msg);
+				int size = in.read(buffer, 0, buffersize);
+				if(size>0){
+					ret = (new String(buffer)).substring(0, size);
+				}
+				if(ret.equals(Packet.OK)){
+					System.out.println("Register OK");
+					UiCallObject logincall = new LoginCall(registerCall.id, registerCall.pswd);
+					login(logincall);
+				} else{
+					IsConnected = false;
+					System.out.println("Register fail");
+				}
+
+			} catch(Exception e){
+				System.out.println("Register fail");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
 		}
-		System.out.println("success");
-		return true;
 	}
 	
-	public static boolean login(UiCallObject _req) {
-		LoginCall loginReq = (LoginCall)_req;
-		try{
-			sockwriter.print("login("+loginReq.id+", "+loginReq.pswd+")");
-		} catch(Exception e){
-			System.out.println("fail");
-			return false;
+	public static void login(UiCallObject _call) {
+		if(IsConnected){
+			LoginCall loginCall = (LoginCall)_call;
+			String msg = Packet.makeMsg(Packet.LOGIN, loginCall.id, loginCall.pswd);
+			String ret = "";
+			try{
+				out.println(msg);
+				int size = in.read(buffer, 0, buffersize);
+				if(size>0){
+					ret = (new String(buffer)).substring(0, size);
+				}
+				if(ret.equals(Packet.OK)){
+					IsLoggedIn = true;
+					user = loginCall.id;
+					System.out.println("Login OK, user = "+user);
+				} else if(ret.equals(Packet.FAIL)){
+					System.out.println("Login fail");
+				} else{
+					IsConnected = false;
+					System.out.println("Login fail");
+				}
+
+			} catch(Exception e){
+				System.out.println("Login fail");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
 		}
-		user = loginReq.id;
-		System.out.println("success, user = "+user);
-		return true;
 	}
-	public static boolean logout() {		
-		try{
-			sockwriter.print("user "+user+" log out");
-		} catch(Exception e){
-			System.out.println("fail");
-			return false;
+	
+	public static void logout() {
+		if(IsConnected){
+			if(IsLoggedIn){
+				String msg = Packet.makeMsg(Packet.LOGOUT);
+				String ret = "";
+				try{
+					out.println(msg);
+					int size = in.read(buffer, 0, buffersize);
+					if(size>0){
+						ret = (new String(buffer)).substring(0, size);
+					}
+					if(ret.equals(Packet.OK)){
+						IsLoggedIn = false;
+						System.out.println("Logout OK, user = "+user);
+					} else{
+						System.out.println("Logout fail");
+					}
+
+				} catch(Exception e){
+					System.out.println("Logout fail");
+				}
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
 		}
-		System.out.println("success");
-		return true;
+	}
+	
+	public static void exit() {
+		if(IsLoggedIn){
+			logout();
+		}
+		IsConnected = false;
+		EXIT = true;
 	}
 }
