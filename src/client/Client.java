@@ -129,13 +129,16 @@ public class Client{
 				if(size>0){
 					ret = (new String(buffer)).substring(0, size);
 				}
-				if(ret.equals(Packet.OK)){
+				if(ret.equals(Packet.CONNECT_OK)){
 					IsConnected = true;
+					toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_OK));
 					System.out.println("Connect OK");
 				} else{
+					toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_FAIL));
 					System.out.println("Connect fail");
 				}
 			} catch(Exception e){
+				toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_FAIL));
 				System.out.println("Connect fail");
 			}
 		}
@@ -152,16 +155,24 @@ public class Client{
 				if(size>0){
 					ret = (new String(buffer)).substring(0, size);
 				}
-				if(ret.equals(Packet.OK)){
+				if(ret.equals(Packet.REGISTER_OK)){
+					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_OK));
 					System.out.println("Register OK");
 					UiCallObject logincall = new LoginCall(registerCall.id, registerCall.pswd);
 					login(logincall);
+				} else if(ret.equals(Packet.REGISTER_DUP)){
+					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_DUP));
+					System.out.println("Register fail, duplicate");
+				} else if(ret.equals(Packet.REGISTER_ILE)){
+					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_ILE));
+					System.out.println("Register fail, illegal");
 				} else{
 					IsConnected = false;
-					System.out.println("Register fail");
+					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_FAIL));
+					System.out.println("Register fail, disconnected");
 				}
-
 			} catch(Exception e){
+				toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_FAIL));
 				System.out.println("Register fail");
 			}
 		} else{
@@ -180,18 +191,27 @@ public class Client{
 				if(size>0){
 					ret = (new String(buffer)).substring(0, size);
 				}
-				if(ret.equals(Packet.OK)){
+				if(ret.equals(Packet.LOGIN_OK)){
+					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_OK));
 					IsLoggedIn = true;
 					user = loginCall.id;
 					System.out.println("Login OK, user = "+user);
-				} else if(ret.equals(Packet.FAIL)){
-					System.out.println("Login fail");
+				} else if(ret.equals(Packet.LOGIN_IDNF)){
+					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_IDNF));
+					System.out.println("Login fail, id "+loginCall.id+" not found");
+				} else if(ret.equals(Packet.LOGIN_WRPS)){
+					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_WRPS));
+					System.out.println("Login fail, wrong password");
+				} else if(ret.equals(Packet.LOGIN_ALRD)){
+					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_ALRD));
+					System.out.println("Login fail, already logged in");
 				} else{
 					IsConnected = false;
+					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_FAIL));
 					System.out.println("Login fail");
 				}
-
 			} catch(Exception e){
+				toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_FAIL));
 				System.out.println("Login fail");
 			}
 		} else{
@@ -210,14 +230,17 @@ public class Client{
 					if(size>0){
 						ret = (new String(buffer)).substring(0, size);
 					}
-					if(ret.equals(Packet.OK)){
+					if(ret.equals(Packet.LOGOUT_OK)){
 						IsLoggedIn = false;
+						toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_OK));
 						System.out.println("Logout OK, user = "+user);
 					} else{
+						toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_FAIL));
 						System.out.println("Logout fail");
 					}
 
 				} catch(Exception e){
+					toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_FAIL));
 					System.out.println("Logout fail");
 				}
 			} else{
