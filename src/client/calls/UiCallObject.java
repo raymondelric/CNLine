@@ -13,6 +13,7 @@ public abstract class UiCallObject{
 	public static final int LOGOUT = 2;
 	public static final int CONNECT_TO_SERVER = 3;
 	public static final int EXIT = 4;
+	public static final int CREATE_ROOM = 5;
 
 	public static final int SEND_MESSAGE = 10;
 	public static final int GET_MESSAGE = 11;
@@ -41,6 +42,13 @@ public abstract class UiCallObject{
 	public static final int RESULT_LOGOUT = 60;
 	public static final int RESULT_LOGOUT_OK = 61;
 	public static final int RESULT_LOGOUT_FAIL = 62;
+
+	public static final int RESULT_ROOM = 70;
+	public static final int RESULT_ROOM_OK = 71;
+	public static final int RESULT_ROOM_FAIL = 72;
+	
+	public static final int RESULT_MESSAGE = 80;
+	public static final int RESULT_MESSAGE_FAIL = 81;
 
 	//common variables
 	public final int type;

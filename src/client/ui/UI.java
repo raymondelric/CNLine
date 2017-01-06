@@ -50,21 +50,30 @@ public class UI{
 		while(true){
 			id++;
 			pswd--;
-			if(id==20)
+			if(id==100)
 				toMain.offer(new ExitCall());
-			else if(id%5==0)
+			else if(id==2)
+				toMain.offer(new ConnectCall("127.0.0.1",9000));
+			else if(id==3)
 				toMain.offer(new RegisterCall(Integer.toString(id),Integer.toString(pswd)));
-			else if(id%5==1)
-				toMain.offer(new LoginCall(Integer.toString(id),Integer.toString(pswd)));
-			else if(id%5==2)
+			else if(id==4)
 				toMain.offer(new LogoutCall());
-			else if(id%5==3)
-				toMain.offer(new ConnectCall("140.112.30.52",6655)); // oasis2
-			else
-				toMain.offer(new ConnectCall("140.112.30.52",5566)); // oasis2
+			else if(id==5)
+				toMain.offer(new RegisterCall(Integer.toString(id),Integer.toString(pswd)));
+			else if(id==6){
+				String[] ids = new String[2];
+				ids[0] = "3";
+				ids[1] = "5";
+				toMain.offer(new RoomCall(ids));
+			}
+			else if(id==7){
+				String rid = "4";
+				String data = "messsssssssssssage";
+				toMain.offer(new MessageCall(rid, data));
+			}
 
 			try {
-				Thread.sleep(1000);
+				Thread.sleep(200);
 			} catch(InterruptedException e){}
 
 			if(fromMain.peek() != null){ //has stuff to do

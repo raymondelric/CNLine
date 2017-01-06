@@ -8,6 +8,8 @@ public class Packet{
 	public static final String REGISTER = "01";
 	public static final String LOGIN = "02";
 	public static final String LOGOUT = "03";
+	public static final String MESSAGE = "04";
+	public static final String ROOM = "05";
 
 	public static final String CONNECT_OK = "10";
 	public static final String CONNECT_FAIL = "11";
@@ -25,6 +27,9 @@ public class Packet{
 
 	public static final String LOGOUT_OK = "40";
 	public static final String LOGOUT_FAIL = "41";
+
+	public static final String ROOM_OK = "50";
+	public static final String ROOM_FAIL = "51";
 
 	public static String makeMsg(String... strs) {
 		String returnStr = strs[0];

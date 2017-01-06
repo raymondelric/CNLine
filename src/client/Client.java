@@ -19,6 +19,7 @@ public class Client{
 	private static int buffersize = 1000;
 	private static boolean IsConnected, IsLoggedIn, EXIT;
 	private static String user;
+	private static String[] userrooms;
 
 	public static void main(String[] args) {
 		initState();
@@ -83,7 +84,11 @@ public class Client{
 						case UiCallObject.EXIT:
 							exit();
 							break;
+						case UiCallObject.CREATE_ROOM:
+							createroom(call);
+							break;
 						case UiCallObject.SEND_MESSAGE:
+							sendmessage(call);
 							break;
 						case UiCallObject.GET_MESSAGE:
 							break;
@@ -251,6 +256,64 @@ public class Client{
 		}
 	}
 	
+	public static void sendmessage(UiCallObject _call) {
+		if(IsConnected){
+			if(IsLoggedIn){
+				MessageCall messageCall = (MessageCall)_call;
+				String msg = Packet.makeMsg(Packet.MESSAGE, messageCall.rid, messageCall.data);
+				try{
+					out.println(msg);
+				} catch(Exception e){
+					toUI.offer(new Result(UiCallObject.RESULT_MESSAGE, UiCallObject.RESULT_MESSAGE_FAIL));
+					System.out.println("Send message fail");
+				}				
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
+		}
+	}
+
+	public static void createroom(UiCallObject _call) {
+		if(IsConnected){
+			if(IsLoggedIn){
+				RoomCall roomCall = (RoomCall)_call;
+				String[] param = new String[roomCall.ids.length+1];
+				param[0] = Packet.ROOM;
+				System.arraycopy(roomCall.ids, 0, param, 1, roomCall.ids.length);
+				//String msg = Packet.makeMsg(Packet.ROOM, roomCall.ids); // include user himself
+				String msg = Packet.makeMsg(param); // include user himself
+				String rets = "";
+				try{
+					out.println(msg);
+					int size = in.read(buffer, 0, buffersize);
+					if(size>0){
+						rets = (new String(buffer)).substring(0, size);
+					}
+					String[] strs = rets.split("/");
+					String ret = strs[0];
+					String roomid = strs[1];
+					if(ret.equals(Packet.ROOM_OK)){
+						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_OK));
+						System.out.println("Room OK, id = "+roomid);
+					} else{
+						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_FAIL));
+						System.out.println("Room fail");
+					}
+
+				} catch(Exception e){
+					toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_FAIL));
+					System.out.println("Room fail");
+				}				
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
+		}
+	}
+
 	public static void exit() {
 		if(IsLoggedIn){
 			logout();
