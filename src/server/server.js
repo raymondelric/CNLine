@@ -11,6 +11,8 @@ const LOGIN = '02'
 const LOGOUT = '03'
 const MESSAGE = '04'
 const CREATEROOM = '05'
+const NEW_MSG = '06'
+const RECORD = '07'
 
 const CONNECT_OK = '10'
 const CONNECT_FAIL = '11'
@@ -42,6 +44,8 @@ var acc = [];
 var pwd = [];
 var num_account = 0;
 var num_room = 0;
+
+var chat_msg_num = [];
 
 console.log("[Loading Acc and Pwd]");
 load_acc();
@@ -102,27 +106,29 @@ net.createServer ( function ( sock ) {
 
 		}
 		else if(type === LOGIN){
-			if(IsLoggedIn){
-				ret = LOGIN_ALRD;
-				//console.log( 'current user: ' + id );
-		        sock.write ( ret ) ; 
-			}
-			else{
-				var strs = msg.split(/[\/,\n]+/);
-				id = strs[0];
-				pass = strs[1];
-				IsLoggedIn = true;
-				ret = LOGIN_OK;
-				console.log( 'login( ' + id + ', ' + pass + ' )' );
-                ret = login(sock,id,pass);
 
-                if (ret == LOGIN_OK){
-                    console.log("[Send history] " + id);
-                    send_history(sock,id);
+			var strs = msg.split(/[\/,\n]+/);
+			id = strs[0];
+			pass = strs[1];
+			IsLoggedIn = true;
+			ret = LOGIN_OK;
+			console.log( 'login( ' + id + ', ' + pass + ' )' );
+            ret = login(sock,id,pass);
+            
+            if (ret == LOGIN_OK){
+                send_history_info(sock,id);
+                for (var i = 0;i < chat_msg_num.length; i++){
+                    ret += "/";
+                    ret += chat_msg_num[i].toString();
                 }
+		    
+                console.log("[Login return] " + ret);
+                sock.write ( ret ) ; 
 
-		        sock.write ( ret ) ; 
-			}
+                console.log("[Send history] " + id);
+                send_history(sock,id);
+            }
+			
 		}
         else if(type === MESSAGE){
 	        var strs = msg.split(/[\/,\n]+/);
@@ -243,7 +249,7 @@ function message(name,input){
                 broadcast(client_socket,room_user,body,room_id,name,body);
 
                 // need to write in log
-                fs.appendFileSync("./room/" + room_id+".history",name.toString()
+                fs.appendFileSync("./room/" + room_id + ".history",name
                                   + "/" + body.toString() + "\n");
         }
     });
@@ -255,8 +261,8 @@ function broadcast( all_socket, room_user, body, room_id, owner){
         var index = client_account.indexOf(room_user[i]);
         console.log("[Index, Username, Socket] "+ index + 
                     ", " + client_account[index] + ", " + client_socket[index]);
-        console.log( "[Server Broadcast] " + room_id + "/"  + owner.toString() + "/" + body );
-        if ( index != -1 )  client_socket[index].write( room_id + "/"  + owner.toString() + "/" + body );
+        console.log( "[Server Broadcast] " + NEW_MSG + "/" + room_id + "/"  + owner + "/" + body );
+        if ( index != -1 )  client_socket[index].write( NEW_MSG + "/" + room_id + "/"  + owner.toString() + "/" + body );
     } 
 }
 
@@ -321,11 +327,40 @@ function create_room( current_user ){
     }
 }
 
+
+function send_history_info(sock, name){
+
+    var chat_room = [];
+    
+    for(var i = 1; i <= num_room; i++){
+        fs.readFileSync("./room/"+i+".user").toString().split('\n').forEach(
+        function(line){
+            if (line != ' '){ 
+                var cmp_user = line.split(/[\/,\n]+/);
+                for(var j = 0; j < cmp_user.length;j++){
+                    if( cmp_user[j] == name )   
+                        chat_room.push(i);
+                }
+            }
+        });
+    }
+
+    for(var i = 0; i < chat_room.length; i++){
+        chat_msg_num[i] = 0;
+        fs.readFileSync("./room/"+chat_room[i]+".history").toString().split('\n').forEach(function(line){
+            if(line != ''){
+                chat_msg_num[i] += 1;
+            }
+        });
+    }
+
+}
+
 function send_history(sock, name){
 
     var chat_room = [];
     
-    for(var i = 0; i <= num_room; i++){
+    for(var i = 1; i <= num_room; i++){
         fs.readFileSync("./room/"+i+".user").toString().split('\n').forEach(
         function(line){
             if (line != ' '){ 
@@ -341,13 +376,21 @@ function send_history(sock, name){
     console.log("[Room to send] " + chat_room);
 
     for(var i = 0; i < chat_room.length; i++){
+        var reverse_send = [];
+
         fs.readFileSync("./room/"+chat_room[i]+".history").toString().split('\n').forEach(function(line){
-            if(line != ' '){
-                console.log("[Send] "+chat_room[i] + "/" + line);
+            if(line != ''){
+                reverse_send.push(chat_room[i] + "/" + line);
+                //sock.write( chat_room[i].toString + "/" + line );
             }
 
 
         });
+        for(var j = reverse_send.length - 1; j >= 0;j--){
+            sock.write( RECORD+"/"+reverse_send[j] );
+            console.log("[Send] "+RECORD+"/"+reverse_send[j].toString());
+        }
+        reverse_send = [];
     }
 
 }
