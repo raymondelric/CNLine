@@ -76,7 +76,17 @@ public class Client{
 					if(size>0){
 						serverMsg = (new String(buffer)).substring(0, size);
 						System.out.println("[RST] "+serverMsg);
-						fromServer.offer(serverMsg);
+						String[] strs = serverMsg.split("/");
+						if(strs[0].equals(Packet.NEWMSG)){
+							for(Room room : session.rooms){
+								if(strs[1].equals(room.rid)){
+									room.msgs.add(0, new Msg(strs[2], strs[3]));
+									break;
+								}
+							}
+						} else{
+							fromServer.offer(serverMsg);
+						}
 					}
 				} catch(Exception e){
 				}
@@ -85,12 +95,33 @@ public class Client{
 		}).start();
 	}
 
-	public static void createSession(String... loginResponse){
-		//session = new Session(null ,null);
+	public static void createSession(String ID, String[] loginResponse){
+		Room[] Rooms = new Room[loginResponse.length-1];
+		for(int i = 1; i < loginResponse.length; i++){
+			int count = Integer.parseInt(loginResponse[i]);
+			Msg[] historyMsgs = new Msg[count];
+			String rid = "";
+			for(int j = 0; j < count; j++){
+				while(fromServer.isEmpty()){}
+				String[] strs = fromServer.peek().split("/");
+				if(strs[0].equals(Packet.RECORD)){
+					rid = strs[1];
+					fromServer.poll();
+					historyMsgs[j] = new Msg(strs[2], strs[3]);
+				} else{
+					j--;
+					System.out.println(strs[0]);
+				}
+			}
+			Rooms[i-1] = new Room(rid, historyMsgs);
+		}
+		session = new Session( ID, Rooms);
 	}
 
 	public static void run() {
 		while(!EXIT){
+			if(IsLoggedIn)
+				session.print();
 			if(!fromUI.isEmpty()) {
 				UiCallObject call = fromUI.peek();
 				if(call.type == UiCallObject.REQUEST){
@@ -223,10 +254,9 @@ public class Client{
 				fromServer.poll();
 				if(ret.equals(Packet.LOGIN_OK)){
 					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_OK));
+					createSession(loginCall.id, rets);
 					IsLoggedIn = true;
-					createSession(rets);
-					System.out.println("Login OK, user = ");
-					//System.out.println("Login OK, user = "+session.ID);
+					System.out.println("Login OK, user = "+session.ID);
 				} else if(ret.equals(Packet.LOGIN_IDNF)){
 					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_IDNF));
 					System.out.println("Login fail, id "+loginCall.id+" not found");
@@ -320,6 +350,9 @@ public class Client{
 					if(ret.equals(Packet.ROOM_OK)){
 						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_OK));
 						System.out.println("Room OK, id = "+roomid);
+						Room r = new Room(roomid);
+						r.print();
+						session.rooms.add(r);
 					} else{
 						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_FAIL));
 						System.out.println("Room fail");

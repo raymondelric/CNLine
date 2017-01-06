@@ -10,6 +10,8 @@ public class Packet{
 	public static final String LOGOUT = "03";
 	public static final String MESSAGE = "04";
 	public static final String ROOM = "05";
+	public static final String NEWMSG = "06";
+	public static final String RECORD = "07";
 
 	public static final String CONNECT_OK = "10";
 	public static final String CONNECT_FAIL = "11";
