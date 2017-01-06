@@ -1,4 +1,4 @@
-all: calls ui packet cli
+all: calls ui packet session cli
 
 calls: 
 	javac client/calls/*.java
@@ -8,6 +8,9 @@ ui:
 
 packet:
 	javac client/packet/*.java
+
+session:
+	javac client/session/*.java
 
 cli:
 	javac client/*.java
@@ -26,5 +29,6 @@ clean:
 	rm -f client/.*~ client/*.class
 	rm -f client/ui/.*~ client/ui/*.class
 	rm -f client/calls/.*~ client/calls/*.class
-	rm -f client/packet/.*~ client/calls/*.class
+	rm -f client/packet/.*~ client/packet/*.class
+	rm -f client/session/.*~ client/session/*.class
 	rm -f server/.*~
