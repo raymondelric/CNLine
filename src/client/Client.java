@@ -6,20 +6,23 @@ import java.net.*; //socket
 import java.nio.charset.Charset; //for encoding problems
 import client.calls.*;
 import client.packet.*;
+import client.session.*;
 import client.ui.*;
 
 public class Client{
 	private static Queue<UiCallObject> fromUI; //read only
 	private static Queue<UiCallObject> toUI; //write only
+	private static Queue<String> fromServer; //write only
 	private static UI ui;
+
 	private static Socket socket;
 	private static PrintWriter out;
 	private static BufferedReader in;
 	private static char[] buffer;
 	private static int buffersize = 1000;
+
 	private static boolean IsConnected, IsLoggedIn, EXIT;
-	private static String user;
-	private static String[] userrooms;
+	private static Session session;
 
 	public static void main(String[] args) {
 		initState();
@@ -32,6 +35,7 @@ public class Client{
 	public static void initQueue() {
 		toUI = new LinkedBlockingQueue<UiCallObject>();
 		fromUI = new LinkedBlockingQueue<UiCallObject>();
+		fromServer = new LinkedBlockingQueue<String>();
 	}
 	
 	public static void initUI() {
@@ -63,8 +67,61 @@ public class Client{
 		}
 	}
 
+	public static void createReadSocketThread(){
+		new Thread(new Runnable(){ public void run(){
+			while(true){
+				try{
+					int size = in.read(buffer, 0, buffersize);
+					String serverMsg = "";
+					if(size>0){
+						serverMsg = (new String(buffer)).substring(0, size);
+						System.out.println("[RST] "+serverMsg);
+						String[] strs = serverMsg.split("/");
+						if(strs[0].equals(Packet.NEWMSG)){
+							for(Room room : session.rooms){
+								if(strs[1].equals(room.rid)){
+									room.msgs.add(0, new Msg(strs[2], strs[3]));
+									break;
+								}
+							}
+						} else{
+							fromServer.offer(serverMsg);
+						}
+					}
+				} catch(Exception e){
+				}
+			}
+		}
+		}).start();
+	}
+
+	public static void createSession(String ID, String[] loginResponse){
+		Room[] Rooms = new Room[loginResponse.length-1];
+		for(int i = 1; i < loginResponse.length; i++){
+			int count = Integer.parseInt(loginResponse[i]);
+			Msg[] historyMsgs = new Msg[count];
+			String rid = "";
+			for(int j = 0; j < count; j++){
+				while(fromServer.isEmpty()){}
+				String[] strs = fromServer.peek().split("/");
+				if(strs[0].equals(Packet.RECORD)){
+					rid = strs[1];
+					fromServer.poll();
+					historyMsgs[j] = new Msg(strs[2], strs[3]);
+				} else{
+					j--;
+					System.out.println(strs[0]);
+				}
+			}
+			Rooms[i-1] = new Room(rid, historyMsgs);
+		}
+		session = new Session( ID, Rooms);
+	}
+
 	public static void run() {
 		while(!EXIT){
+			if(IsLoggedIn)
+				session.print();
 			if(!fromUI.isEmpty()) {
 				UiCallObject call = fromUI.peek();
 				if(call.type == UiCallObject.REQUEST){
@@ -102,18 +159,16 @@ public class Client{
 							System.out.println("unidentified call number from UI");
 							break;
 					}
-					fromUI.poll(); //handled, pop the request from queue
-				}else{ //response from UI(usually just ignore it)
-					
-					fromUI.poll(); //handled, pop the request from queue
+					fromUI.poll();
+				}else{
+					fromUI.poll();
 				}
-			}else{ //UI queue is empty
+			}else{
 				try{
-					Thread.sleep(100); // Some idle time to prevent over using CPU
+					Thread.sleep(100);
 				} catch(InterruptedException e){}
 			}
-			//maybe read something from server and push it into the toUI queue if needed here
-		}//end of while loop
+		}
 	}
 
 	public static void connect(UiCallObject _call) {
@@ -126,14 +181,14 @@ public class Client{
 				out = new PrintWriter(socket.getOutputStream(), true);
 				in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 				buffer = new char[buffersize];
+				createReadSocketThread();
 
 				String msg = Packet.makeMsg(Packet.CONNECT, "Happy New Year!");
 				String ret = "";
-				out.println(msg);
-				int size = in.read(buffer, 0, buffersize);
-				if(size>0){
-					ret = (new String(buffer)).substring(0, size);
-				}
+				out.println(msg);		
+				while(fromServer.isEmpty()){}
+				ret = fromServer.peek();
+				fromServer.poll();
 				if(ret.equals(Packet.CONNECT_OK)){
 					IsConnected = true;
 					toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_OK));
@@ -142,6 +197,7 @@ public class Client{
 					toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_FAIL));
 					System.out.println("Connect fail");
 				}
+
 			} catch(Exception e){
 				toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_FAIL));
 				System.out.println("Connect fail");
@@ -156,10 +212,9 @@ public class Client{
 			String ret = "";
 			try{
 				out.println(msg);
-				int size = in.read(buffer, 0, buffersize);
-				if(size>0){
-					ret = (new String(buffer)).substring(0, size);
-				}
+				while(fromServer.isEmpty()){}
+				ret = fromServer.peek();
+				fromServer.poll();
 				if(ret.equals(Packet.REGISTER_OK)){
 					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_OK));
 					System.out.println("Register OK");
@@ -189,18 +244,19 @@ public class Client{
 		if(IsConnected){
 			LoginCall loginCall = (LoginCall)_call;
 			String msg = Packet.makeMsg(Packet.LOGIN, loginCall.id, loginCall.pswd);
-			String ret = "";
+			String[] rets;
 			try{
 				out.println(msg);
-				int size = in.read(buffer, 0, buffersize);
-				if(size>0){
-					ret = (new String(buffer)).substring(0, size);
-				}
+				while(fromServer.isEmpty()){}
+				rets = fromServer.peek().split("/");
+				String ret = rets[0];
+				System.out.print(ret);
+				fromServer.poll();
 				if(ret.equals(Packet.LOGIN_OK)){
 					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_OK));
+					createSession(loginCall.id, rets);
 					IsLoggedIn = true;
-					user = loginCall.id;
-					System.out.println("Login OK, user = "+user);
+					System.out.println("Login OK, user = "+session.ID);
 				} else if(ret.equals(Packet.LOGIN_IDNF)){
 					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_IDNF));
 					System.out.println("Login fail, id "+loginCall.id+" not found");
@@ -231,14 +287,13 @@ public class Client{
 				String ret = "";
 				try{
 					out.println(msg);
-					int size = in.read(buffer, 0, buffersize);
-					if(size>0){
-						ret = (new String(buffer)).substring(0, size);
-					}
+					while(fromServer.isEmpty()){}
+					ret = fromServer.peek();
+					fromServer.poll();
 					if(ret.equals(Packet.LOGOUT_OK)){
 						IsLoggedIn = false;
 						toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_OK));
-						System.out.println("Logout OK, user = "+user);
+						System.out.println("Logout OK, user = "+session.ID);
 					} else{
 						toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_FAIL));
 						System.out.println("Logout fail");
@@ -282,21 +337,22 @@ public class Client{
 				String[] param = new String[roomCall.ids.length+1];
 				param[0] = Packet.ROOM;
 				System.arraycopy(roomCall.ids, 0, param, 1, roomCall.ids.length);
-				//String msg = Packet.makeMsg(Packet.ROOM, roomCall.ids); // include user himself
 				String msg = Packet.makeMsg(param); // include user himself
 				String rets = "";
 				try{
 					out.println(msg);
-					int size = in.read(buffer, 0, buffersize);
-					if(size>0){
-						rets = (new String(buffer)).substring(0, size);
-					}
+					while(fromServer.isEmpty()){}
+					rets = fromServer.peek();
+					fromServer.poll();
 					String[] strs = rets.split("/");
 					String ret = strs[0];
 					String roomid = strs[1];
 					if(ret.equals(Packet.ROOM_OK)){
 						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_OK));
 						System.out.println("Room OK, id = "+roomid);
+						Room r = new Room(roomid);
+						r.print();
+						session.rooms.add(r);
 					} else{
 						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_FAIL));
 						System.out.println("Room fail");
