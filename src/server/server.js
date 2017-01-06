@@ -103,7 +103,6 @@ net.createServer ( function ( sock ) {
             // handle register
             ret = register(sock,_id,_pass);
 		    sock.write ( ret ) ; 
-
 		}
 		else if(type === LOGIN){
 
@@ -116,6 +115,7 @@ net.createServer ( function ( sock ) {
             ret = login(sock,id,pass);
             
             if (ret == LOGIN_OK){
+                chat_msg_num = [];
                 send_history_info(sock,id);
                 for (var i = 0;i < chat_msg_num.length; i++){
                     ret += "/";
@@ -124,7 +124,6 @@ net.createServer ( function ( sock ) {
 		    
                 console.log("[Login return] " + ret);
                 sock.write ( ret ) ; 
-
                 console.log("[Send history] " + id);
                 send_history(sock,id);
             }
@@ -151,7 +150,7 @@ net.createServer ( function ( sock ) {
 			IsLoggedIn = false;
 			ret = LOGOUT_OK;
 			console.log( 'logout( ' + id + ', ' + pass + ' )' );
-		    sock.write ( ret ) ; 
+		    sock.write ( ret ) ;
 		}
 
 	} ) ; 
@@ -388,7 +387,8 @@ function send_history(sock, name){
         });
         for(var j = reverse_send.length - 1; j >= 0;j--){
             sock.write( RECORD+"/"+reverse_send[j] );
-            console.log("[Send] "+RECORD+"/"+reverse_send[j].toString());
+            console.log("[Send] "+RECORD+"/"+reverse_send[j].toString()+'\n');
+            sleep.usleep(10000);
         }
         reverse_send = [];
     }
