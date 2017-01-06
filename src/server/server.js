@@ -102,27 +102,21 @@ net.createServer ( function ( sock ) {
 
 		}
 		else if(type === LOGIN){
-			if(IsLoggedIn){
-				ret = LOGIN_ALRD;
-				//console.log( 'current user: ' + id );
-		        sock.write ( ret ) ; 
-			}
-			else{
-				var strs = msg.split(/[\/,\n]+/);
-				id = strs[0];
-				pass = strs[1];
-				IsLoggedIn = true;
-				ret = LOGIN_OK;
-				console.log( 'login( ' + id + ', ' + pass + ' )' );
-                ret = login(sock,id,pass);
 
-                if (ret == LOGIN_OK){
-                    console.log("[Send history] " + id);
-                    send_history(sock,id);
-                }
+			var strs = msg.split(/[\/,\n]+/);
+			id = strs[0];
+			pass = strs[1];
+			IsLoggedIn = true;
+			ret = LOGIN_OK;
+			console.log( 'login( ' + id + ', ' + pass + ' )' );
+            ret = login(sock,id,pass);
 
-		        sock.write ( ret ) ; 
-			}
+            if (ret == LOGIN_OK){
+                console.log("[Send history] " + id);
+                //send_history(sock,id);
+            }
+		    sock.write ( ret ) ; 
+			
 		}
         else if(type === MESSAGE){
 	        var strs = msg.split(/[\/,\n]+/);
@@ -325,7 +319,7 @@ function send_history(sock, name){
 
     var chat_room = [];
     
-    for(var i = 0; i <= num_room; i++){
+    for(var i = 1; i <= num_room; i++){
         fs.readFileSync("./room/"+i+".user").toString().split('\n').forEach(
         function(line){
             if (line != ' '){ 

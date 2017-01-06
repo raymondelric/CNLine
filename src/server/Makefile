@@ -1,6 +1,6 @@
 clean:
 	rm -rf pwd
 	touch pwd
-	rm -rf room/4.*
+	rm -rf room/*
 run:
 	node server.js
