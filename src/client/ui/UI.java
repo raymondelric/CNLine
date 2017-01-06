@@ -56,20 +56,32 @@ public class UI{
 			else if(id==2)
 				toMain.offer(new ConnectCall("127.0.0.1",9000));
 			else if(id==3)
-				toMain.offer(new RegisterCall(Integer.toString(3),Integer.toString(3)));
-			else if(id==4)
-				toMain.offer(new LogoutCall());
-			else if(id==5)
-				toMain.offer(new RegisterCall(Integer.toString(5),Integer.toString(5)));
-			else if(id==6){
-				String[] ids = new String[2];
+				toMain.offer(new LoginCall(Integer.toString(5),Integer.toString(5)));
+			else if(id==4){
+				String rid = "1";
+				String data = "1111";
+				toMain.offer(new MessageCall(rid, data));
+			}
+			else if(id==5){
+				String[] ids = new String[1];
 				ids[0] = "5";
-				ids[1] = "6";
+				toMain.offer(new RoomCall(ids));
+			}
+			else if(id==6){
+				String[] ids = new String[1];
+				ids[0] = "5";
 				toMain.offer(new RoomCall(ids));
 			}
 			else if(id==7){
-				String rid = "1";
-				String data = "2222";
+				String[] ids = new String[1];
+				ids[0] = "5";
+				toMain.offer(new RoomCall(ids));
+			}
+
+
+			else if(id==8){
+				String rid = "3";
+				String data = "3333";
 				toMain.offer(new MessageCall(rid, data));
 			}
 

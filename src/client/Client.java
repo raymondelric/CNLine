@@ -102,7 +102,9 @@ public class Client{
 			Msg[] historyMsgs = new Msg[count];
 			String rid = "";
 			for(int j = 0; j < count; j++){
+				
 				while(fromServer.isEmpty()){}
+
 				String[] strs = fromServer.peek().split("/");
 				if(strs[0].equals(Packet.RECORD)){
 					rid = strs[1];
@@ -165,7 +167,7 @@ public class Client{
 				}
 			}else{
 				try{
-					Thread.sleep(100);
+					Thread.sleep(10);
 				} catch(InterruptedException e){}
 			}
 		}
