@@ -35,32 +35,55 @@ import javafx.scene.input.MouseEvent;
 
 import client.calls.*;
 
-
 public class UI extends Application{
 	public static String css = UI.class.getResource("/client/ui/style/style.css").toExternalForm();
 	private static Queue<client.calls.UiCallObject> fromMain; //read only
 	private static Queue<client.calls.UiCallObject> toMain; //write only
 	public int i;
-	public MainScreen s;
-	public SplashScreen splash;
+	//public MainScreen s;
+	//public SplashScreen splash;
 	//Testing code without GUI
 	public void runTest(){
 		int id = 1;
 		int pswd = -1;
-		boolean connected = false, loggedin = false;
+		//boolean connected = false, loggedin = false;
 		while(true){
 			id++;
 			pswd--;
-			if(id%5==0)
-				toMain.offer(new RegisterCall(Integer.toString(id),Integer.toString(pswd)));
-			else if(id%5==1)
-				toMain.offer(new LoginCall(Integer.toString(id),Integer.toString(pswd)));
-			else if(id%5==2)
-				toMain.offer(new LogoutCall());
-			else if(id%5==3)
-				toMain.offer(new ConnectCall("140.112.30.52",6655)); // oasis2
-			else
-				toMain.offer(new ConnectCall("140.112.30.52",5566)); // oasis2
+			
+			if(id==100)
+				toMain.offer(new ExitCall());
+			else if(id==2)
+				toMain.offer(new ConnectCall("127.0.0.1",9000));
+			else if(id==3)
+				toMain.offer(new LoginCall(Integer.toString(5),Integer.toString(5)));
+			else if(id==4){
+				String rid = "1";
+				String data = "1111";
+				toMain.offer(new MessageCall(rid, data));
+			}
+			else if(id==5){
+				String[] ids = new String[1];
+				ids[0] = "5";
+				toMain.offer(new RoomCall(ids));
+			}
+			else if(id==6){
+				String[] ids = new String[1];
+				ids[0] = "5";
+				toMain.offer(new RoomCall(ids));
+			}
+			else if(id==7){
+				String[] ids = new String[1];
+				ids[0] = "5";
+				toMain.offer(new RoomCall(ids));
+			}
+
+
+			else if(id==8){
+				String rid = "3";
+				String data = "3333";
+				toMain.offer(new MessageCall(rid, data));
+			}
 
 			try {
 				Thread.sleep(1000);
@@ -98,24 +121,24 @@ public class UI extends Application{
 					fromMain.poll(); //handled, pop the request from queue
 				}else{ //response from Main (usually show something on screen)
 					switch(req.whatCall){
-						case UiCallObject.CONNECT_RESULT:
+						case UiCallObject.RESULT_CONNECT:
 							Result connectRes = (Result)req;
-							connected = connectRes.result;
+							int connected = connectRes.result;
 							System.out.println(connected);
 							break;
-						case UiCallObject.REGISTER_RESULT:
+						case UiCallObject.RESULT_REGISTER:
 							Result registerRes = (Result)req;
-							boolean registered = registerRes.result;
+							int registered = registerRes.result;
 							System.out.println(registered);
 							break;
-						case UiCallObject.LOGIN_RESULT:
+						case UiCallObject.RESULT_LOGIN:
 							Result loginRes = (Result)req;
-							loggedin = loginRes.result;
+							int loggedin = loginRes.result;
 							System.out.println(loggedin);
 							break;
-						case UiCallObject.LOGOUT_RESULT:
+						case UiCallObject.RESULT_LOGOUT:
 							Result logoutRes = (Result)req;
-							boolean loggedout = logoutRes.result;
+							int loggedout = logoutRes.result;
 							System.out.println(loggedout);
 							break;
 					}
@@ -129,6 +152,7 @@ public class UI extends Application{
 		fromMain = toUI;
 		toMain = fromUI;
 	}
+
 	@Override
     public void start(Stage mainWindow) throws Exception{
     	System.out.println("starting UI...");
@@ -140,11 +164,11 @@ public class UI extends Application{
     	Timeline looper = new Timeline(new KeyFrame(Duration.seconds(1), new EventHandler<ActionEvent>() {
 		    @Override
 		    public void handle(ActionEvent event) {
-		    	/*UI.pushIn(new ConnectCall("140.112.30.52",6655));
+		    	UI.pushIn(new ConnectCall("140.112.30.52",6655));
 		    	i++;
 		        System.out.println("this is called every second on UI thread");
 		        s.msgG.addBack(0,"usr1","Message"+i+" back");
-		        splash.printMsg("I am message "+i+"...");*/
+		        splash.printMsg("I am message "+i+"...");
 		    }
 		}));
 		looper.setCycleCount(Timeline.INDEFINITE);
@@ -690,3 +714,5 @@ class WhiteLabel extends Label{
 		this.setMinWidth(60);
 	}
 }
+}
+
