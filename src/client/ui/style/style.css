@@ -5,6 +5,13 @@
 
 	-fx-background-color: rgba(255,255,255,0.5);
 }
+#White{
+	-fx-text-fill: white;
+}
+.hbox{
+	-fx-text-alignment: center;
+	-fx-alignment: center;
+}
 .button{
 	-fx-text-fill: black;
 	-fx-background-radius: 0;
@@ -45,6 +52,6 @@
 		rgba(0,0,0,0.05),
         linear-gradient(#e4cd6e 0%, #ffe788 20%, #e4cd6e 80%, #ffda45 100%),
         rgba(0,0,0,0.05),
-        linear-gradient(#fdfdfd, #e3e3e3);
+        linear-gradient(#e3e3e3, #fdfdfd);
     -fx-background-insets: 0,0.5,4.5,5;
 }

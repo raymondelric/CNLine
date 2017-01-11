@@ -28,10 +28,13 @@ import javafx.scene.control.*;
 import javafx.scene.shape.*;
 import javafx.scene.text.*;
 import javafx.event.*;
-import client.calls.*;
+import javafx.stage.FileChooser;
 import javafx.scene.layout.*;
 import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
+
+import client.calls.*;
+
 
 public class UI extends Application{
 	public static String css = UI.class.getResource("/client/ui/style/style.css").toExternalForm();
@@ -132,19 +135,20 @@ public class UI extends Application{
     	splash = new SplashScreen();
     	s = new MainScreen();
     	i = 0;
-    	alert(splash, "Test Alert", "Got it!");
+    	//alert(splash, "Test Alert", "Got it!");
     	//the main loop of handling stuff
-    	Timeline fiveSecondsWonder = new Timeline(new KeyFrame(Duration.seconds(5), new EventHandler<ActionEvent>() {
+    	Timeline looper = new Timeline(new KeyFrame(Duration.seconds(1), new EventHandler<ActionEvent>() {
 		    @Override
 		    public void handle(ActionEvent event) {
+		    	/*UI.pushIn(new ConnectCall("140.112.30.52",6655));
 		    	i++;
 		        System.out.println("this is called every second on UI thread");
 		        s.msgG.addBack(0,"usr1","Message"+i+" back");
-		        splash.printMsg("I am message "+i+"...");
+		        splash.printMsg("I am message "+i+"...");*/
 		    }
 		}));
-		fiveSecondsWonder.setCycleCount(Timeline.INDEFINITE);
-		fiveSecondsWonder.play();
+		looper.setCycleCount(Timeline.INDEFINITE);
+		looper.play();
     }
 
 
@@ -154,8 +158,7 @@ public class UI extends Application{
         toMain.offer(new ExitCall());
     }
 
-    private void alert(Stage parent, String msg, String btnMsg){
-		
+    public static void alert(Stage parent, String msg, String btnMsg){		
     	Stage alertBox = new Stage();
     	alertBox.initModality(Modality.APPLICATION_MODAL);
         alertBox.initStyle(StageStyle.TRANSPARENT);
@@ -172,7 +175,7 @@ public class UI extends Application{
         layout.getChildren().add(message);
         Button btn = new Button(btnMsg);
         btn.setOnAction(event -> {
-        	splash.toggleMode(-1);
+        	//splash.toggleMode(-1);
         	ScaleTransition sa = new ScaleTransition(Duration.millis(200), layout);
 			sa.setFromX(1.0);
 			sa.setToX(0.0);
@@ -231,11 +234,29 @@ class SplashScreen extends Stage{
 
         loginBox = new VBox(8);
         HBox accountWrapper = new HBox(8);
-        accountWrapper.getChildren().addAll(new Label("account "), new TextField());
+        accountWrapper.setAlignment(Pos.CENTER);
+        TextField accountTxt = new TextField();
+        PasswordField passTxt = new PasswordField();
+        accountWrapper.getChildren().addAll(new WhiteLabel("account "), accountTxt);
         HBox passwordWrapper = new HBox(8);
-        passwordWrapper.getChildren().addAll(new Label("password "), new PasswordField());
+        passwordWrapper.setAlignment(Pos.CENTER);
+        passwordWrapper.getChildren().addAll(new WhiteLabel("password "), passTxt);
         HBox buttonsWrapper = new HBox(8);
-        buttonsWrapper.getChildren().addAll(new Button("Login"), new Button("Register"));
+        buttonsWrapper.setAlignment(Pos.CENTER);
+        Button loginBtn = new Button("Login"), registerBtn = new Button("Register");
+        loginBtn.setOnAction(event0->{
+        	System.out.println("Login: "+accountTxt.getText()  +" password: "+passTxt.getText());
+        	UI.pushIn(new LoginCall(accountTxt.getText(),passTxt.getText()));
+        	toggleMode(-1);
+        });
+        registerBtn.setOnAction(event1->{
+        	System.out.println("Register: "+accountTxt.getText()  +" password: "+passTxt.getText());
+        	UI.pushIn(new RegisterCall(accountTxt.getText(),passTxt.getText()));
+        	toggleMode(-1);
+        });
+        buttonsWrapper.getChildren().addAll(loginBtn, registerBtn);
+
+
         loginBox.getChildren().addAll(accountWrapper, passwordWrapper, buttonsWrapper);
 
         Scene scene = new Scene(layout);
@@ -252,6 +273,7 @@ class SplashScreen extends Stage{
         this.centerOnScreen();
         this.setAlwaysOnTop(true);
         this.show();
+        toggleMode(-1);
 	}
 	public void printMsg(String s){
 		if(s!=null){
@@ -259,6 +281,7 @@ class SplashScreen extends Stage{
 		}
 	}
 	public void toggleMode(int _mode){
+
 		boolean changed = true;
 		changed = (mode!=_mode)? true:false;
 		if(changed){
@@ -277,17 +300,35 @@ class SplashScreen extends Stage{
 					}
 				break;
 			}
+			Node rm, ad;
 			if(mode == 0){
 				//do something
-				layout.getChildren().remove(loginBox);
-				layout.getChildren().add(welcomeMsg);
+				rm = loginBox;
+				ad = welcomeMsg;
 				li.start();
 			}else{
 				//do something
-				layout.getChildren().remove(welcomeMsg);
-				layout.getChildren().add(loginBox);
+				rm = welcomeMsg;
+				ad = loginBox;
 				li.stop();
 			}
+			ScaleTransition sa;
+			sa = new ScaleTransition(Duration.millis(200), rm);
+			sa.setFromY(1.0);
+			sa.setToY(0.0);
+			sa.setCycleCount(1);
+			sa.setInterpolator(Interpolator.EASE_OUT);
+			sa.play();
+			sa.setOnFinished(event -> {
+				layout.getChildren().remove(rm);
+				ScaleTransition saAdd = new ScaleTransition(Duration.millis(200), ad);
+				saAdd.setFromY(0.0);
+				saAdd.setToY(1.0);
+				saAdd.setCycleCount(1);
+				saAdd.setInterpolator(Interpolator.EASE_OUT);
+				saAdd.play();
+				layout.getChildren().add(ad);
+			});
 		}
 	}
 }
@@ -296,13 +337,17 @@ class MainScreen extends Stage{
 	
 	public MainScreen(){
 		this.initModality(Modality.NONE);
-        this.initStyle(StageStyle.UTILITY);
-        this.setTitle("Debug Master");
+        this.initStyle(StageStyle.TRANSPARENT);
+        this.setTitle("Chatroom");
 
         VBox layout = new VBox(8);
         layout.setFillWidth(true);
      	layout.setMinWidth(600);
         layout.setPadding(new Insets(10,10,10,10));
+        Rectangle ghost = new Rectangle();
+		ghost.setWidth(10);
+		ghost.setHeight(20);
+		ghost.setFill(Color.web("rgba(0,0,0,0)"));
         //layout.getChildren().add(new Label("Press a button"));
         //layout.getChildren().add(new LoadingIcon());
         msgG = new MessageGroup();
@@ -312,12 +357,33 @@ class MainScreen extends Stage{
         Button sendBtn = new Button("Send\nMessage");
         sendBtn.setPrefWidth(CommonUi.WIDTH*0.18);
         sendBtn.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        sendBtn.setOnAction(event->{
+        	msgG.addBack(1, "Myself", typing.getText());
+        });
         Button fileBtn = new Button("Send some file(s)...");
         fileBtn.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        fileBtn.setOnAction(event -> {
+        	Stage opener = new Stage();
+			opener.initModality(Modality.APPLICATION_MODAL);
+        	opener.initStyle(StageStyle.UTILITY);
+        	FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Send Files");
+            List<File> list = fileChooser.showOpenMultipleDialog(opener);
+                    if (list != null) {
+                    	System.out.println("Send Files:");
+                    	try{
+	                        for (File file : list) {
+	                            System.out.println(file.getCanonicalPath());
+	                        }
+	                    }catch(IOException e){}
+                    }
+        });
         typeArea.getChildren().addAll(typing, sendBtn);
-        layout.getChildren().addAll(msgG,typeArea, fileBtn);
+        layout.getChildren().addAll(ghost, msgG,typeArea, fileBtn);
         layout.setBackground(new Background(CommonUi.bg));
+        CommonUi.setDrag(layout, this);
         Scene scene = new Scene(layout,CommonUi.WIDTH+30,820);
+        scene.setFill(Color.TRANSPARENT);
         scene.getStylesheets().add(UI.css);
         this.setScene(scene);
         this.show();
@@ -326,6 +392,7 @@ class MainScreen extends Stage{
 			msgG.addFront(0,"usr1","Message"+i+" front");
 			i++;
         }
+
         
 	}
 }
@@ -360,16 +427,18 @@ class LoadingIcon extends Group{
 }
 
 class MessageGroup extends Group{
+	private Rectangle ghost;
 	private ScrollPane sp;
 	private VBox msgWrapper;
 	private LinkedList<MessageBubble> msgBubs;
 	public MessageGroup(){
 		msgWrapper = new VBox(8);
 		msgWrapper.setFillWidth(true);
-     	msgWrapper.setPrefWidth(450);
+     	msgWrapper.setPrefWidth(CommonUi.WIDTH);
      	
 		sp = new ScrollPane();
 		sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+		sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
 		sp.setPrefHeight(600);
 		sp.setFitToWidth(true);
  		sp.setContent(msgWrapper);
@@ -378,20 +447,33 @@ class MessageGroup extends Group{
  		System.out.println("msgWrapper:"+msgWrapper.getWidth());
 	}
 	public void addFront(int type, String userName, String msgContent){
-		msgWrapper.getChildren().add(0,new FileBubble(userName, "陳菊.avi"));
+		msgWrapper.getChildren().add(0,new FileBubble(userName, "好看的影片.avi"));
 		msgWrapper.getChildren().add(0,new MessageBubble(userName, msgContent,false));
 		System.out.println("ADD: "+msgContent);
 	}
 	public void addBack(int type, String userName, String msgContent){
 		boolean scrolldown = (sp.getVvalue()>=0.5d)? true:false;
-		msgWrapper.getChildren().add(new MessageBubble(userName, msgContent,true));
-		msgWrapper.getChildren().add(new LogBubble(userName, true));
-		msgWrapper.getChildren().add(new LogBubble(userName, false));
-		System.out.println("ADD: "+msgContent);
+		if(ghost != null) msgWrapper.getChildren().remove(ghost);
+		ghost = new Rectangle();
+		ghost.setWidth(10);
+		ghost.setHeight(100);
+		ghost.setFill(Color.web("rgba(0,0,0,0)"));
+		
+
+		if(type == 0){
+			msgWrapper.getChildren().add(new MessageBubble(userName, msgContent,true));
+			msgWrapper.getChildren().add(new LogBubble(userName, true));
+			msgWrapper.getChildren().add(new LogBubble(userName, false));
+			System.out.println("ADD: "+msgContent);
+		}else{
+			msgWrapper.getChildren().add(new MyMessageBubble(userName, msgContent));
+		}
+		msgWrapper.getChildren().add(ghost);
 		if(scrolldown){
 			this.layout();
 			sp.setVvalue(1.0d);
 		}
+		
 	}
 }
 class MessageBubble extends Group{
@@ -451,9 +533,59 @@ class MessageBubble extends Group{
 		    ft.setDelay(Duration.millis(2000));
 			ft.play();	
 		}
-		
 	}
 }
+class MyMessageBubble extends Group{
+	private ScaleTransition sa;
+	private TranslateTransition st;
+	private FadeTransition ft;
+	static private BackgroundFill bg = new BackgroundFill(Color.web("#E0E0E0"), new CornerRadii(10),new Insets(0));
+	public MyMessageBubble(String usr, String s){
+		Label u = new Label(usr);
+		Label l = new Label(s);
+		l.setWrapText(true);
+		l.setPrefWidth(CommonUi.WIDTH*0.6);
+		l.setFont(new Font("Arial", 16));
+		l.setTextFill(Color.web("#000000"));
+		l.setBackground(new Background(bg));
+		l.setTranslateX(CommonUi.WIDTH*0.4-9);
+		l.setTranslateY(16);
+		l.setMinHeight(20);
+		l.setPadding(new Insets(5,10,5,10));
+		StackPane sp = new StackPane();
+		sp.setPrefWidth(CommonUi.WIDTH);
+		sp.setAlignment(Pos.CENTER_RIGHT);
+		u.setWrapText(false);
+		u.setTranslateX(-9);
+		u.setFont(new Font("Arial", 12));
+		u.setTextFill(Color.web("#000000"));
+		sp.getChildren().add(u);
+		Polygon polygon = new Polygon();
+		polygon.getPoints().addAll(new Double[]{
+		    0.0, 13.0,
+		    -10.0, 10.0,
+		    -10.0, 16.0 });
+		polygon.setTranslateY(12);
+		polygon.setTranslateX(CommonUi.WIDTH);
+		polygon.setFill(bg.getFill());
+		this.getChildren().add(polygon);
+		this.getChildren().add(l);
+		this.getChildren().add(sp);
+		sa = new ScaleTransition(Duration.millis(200), l);
+		sa.setFromX(0.0);
+		sa.setToX(1.0);
+		sa.setCycleCount(1);
+		sa.setInterpolator(Interpolator.EASE_OUT);
+		st = new TranslateTransition(Duration.millis(200), l);
+		st.setFromX(l.getPrefWidth()/2+l.getTranslateX());
+		st.setToX(l.getTranslateX());
+		st.setCycleCount(1);
+		st.setInterpolator(Interpolator.EASE_OUT);
+		sa.play();
+		st.play();
+	}
+}
+
 class FileBubble extends Group{
 	ScaleTransition sa;
 	public FileBubble(String usr, String filename){
@@ -470,7 +602,25 @@ class FileBubble extends Group{
 		u.setTextAlignment(TextAlignment.CENTER);
 		u.setContentDisplay(ContentDisplay.CENTER);
 		Button recv = new Button("Download it!");
-		//recv.setStyle();
+		recv.setOnAction(event -> {
+			Stage saver = new Stage();
+			saver.initModality(Modality.APPLICATION_MODAL);
+        	saver.initStyle(StageStyle.UTILITY);
+        	FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Save File");
+            System.out.println("Save File");
+            fileChooser.setInitialFileName("陳菊.avi");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+            );
+            File file = fileChooser.showSaveDialog(saver);
+            if(file != null){
+            	System.out.print("Save File: ");
+            	try{
+                    System.out.println(file.getCanonicalPath());
+                }catch(IOException e){}
+            }
+        });
 		wrapper.getChildren().addAll(u, recv);
 		this.getChildren().add(wrapper);
 		sa = new ScaleTransition(Duration.millis(200), wrapper);
@@ -509,7 +659,7 @@ class LogBubble extends Group{
 	}
 }
 class CommonUi{
-	public static int WIDTH = 450;
+	public static int WIDTH = 440;
 	public static BackgroundFill blackBg = new BackgroundFill(Color.web("rgba(0,0,0,0.5)"), new CornerRadii(0),new Insets(0));
 	public static BackgroundImage bg = new BackgroundImage(new Image("/client/ui/sprites/bg.png"),
 		BackgroundRepeat.REPEAT, BackgroundRepeat.REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT);
@@ -532,4 +682,11 @@ class CommonUi{
         });
 	}
 	private static class Delta { double x, y; }
+}
+class WhiteLabel extends Label{
+	public WhiteLabel(String s){
+		super(s);
+		this.setId("White");
+		this.setMinWidth(60);
+	}
 }
