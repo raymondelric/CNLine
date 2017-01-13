@@ -2,7 +2,7 @@ var net = require('net');
 var fs = require('fs');
 var sleep = require('sleep');
 
-var HOST = '140.112.30.43' ; // parameterize the IP of the Listen 
+var HOST = '140.112.30.44' ; // parameterize the IP of the Listen 
 var PORT = 9000 ; // TCP LISTEN port 
 
 const CONNECT = '00'
@@ -446,7 +446,11 @@ function send_history_info(sock, name){
 function send_history(sock, name){
 
     var chat_room = [];
-    var hist_buf = RECORD + '/';
+    var hist_buf = RECORD + "";
+
+    if(chat_msg_num.length > 0){
+        hist_buf += "/";
+    }
     
     for(var i = 1; i <= num_room; i++){
         fs.readFileSync("./room/"+i+".user").toString().split('\n').forEach(
@@ -532,11 +536,23 @@ function send_history(sock, name){
 
 function checkid(name){
 
-    console.log("[CheckID] "+name);
+    console.log("[CheckID] " + name);
 
     for(var i = 0;i < acc.length;i++){
-        if (name == acc[i])
+        
+        console.log("[Checking] "  + acc[i].toString().length + "  " + name.toString().length);
+
+        if (name.toString() === acc[i].toString()){
+            console.log("[Exist] " + acc[i]);
             return CHECK_OK;
+        }
+
+        for(var j = 0;j < name.length && j < acc[i].toString().length;j++){
+                if (name[j] != acc[i].toString()[j]){
+                    console.log("[Lalala] " + name[j] + " " + acc[i].toString()[j]);
+                }
+        }
+        
     }
 
     return CHECK_FALSE;
