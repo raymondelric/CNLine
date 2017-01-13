@@ -14,6 +14,8 @@ public abstract class UiCallObject{
 	public static final int CONNECT_TO_SERVER = 3;
 	public static final int EXIT = 4;
 	public static final int CREATE_ROOM = 5;
+	public static final int CHECK_EXIST_ID = 6;
+	public static final int PEOPLE_IN_ROOM = 7;
 
 	public static final int SEND_MESSAGE = 10;
 	public static final int GET_MESSAGE = 11;
@@ -22,6 +24,8 @@ public abstract class UiCallObject{
 	public static final int GET_FILE = 21;
 	public static final int DOWNLOAD_FILE = 22;
 
+
+	//want to deprecate it
 	public static final int RESULT_CONNECT = 30;
 	public static final int RESULT_CONNECT_OK = 31;
 	public static final int RESULT_CONNECT_FAIL = 32;
@@ -51,13 +55,15 @@ public abstract class UiCallObject{
 	public static final int RESULT_MESSAGE_FAIL = 81;
 
 	//common variables
-	public final int type;
+	public int type;
 	public final int whatCall;
-	public String message; //some words to display on console, not necessary
+	public boolean success; //set by response
+	//public String message; //some words to display on console, not necessary
 
 	public UiCallObject(int _whatCall, int _type) {
 		whatCall = _whatCall;
 		type = _type;
+		success = false;
 	}
 	public abstract void print(); //debug
 }

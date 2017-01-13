@@ -5,6 +5,10 @@ import java.nio.charset.Charset; //for encoding problems
 public class LoginCall extends UiCallObject{
 	public String id;
 	public String pswd;
+
+	//respond
+	public String[] rids; //the rooms that this user currently has
+
 	public LoginCall(String _id, String _pswd){
 		super(LOGIN, REQUEST);
 		this.id = _id;
