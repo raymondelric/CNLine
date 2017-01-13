@@ -37,6 +37,9 @@ public class Packet{
 	public static final String ID_OK = "80";
 	public static final String ID_NEX = "81";
 
+	public static final String USR_IN = "98";
+	public static final String USR_OUT = "99";
+	
 	public static String makeMsg(String... strs) {
 		String returnStr = strs[0];
 		for(int i = 1; i < strs.length; i++){

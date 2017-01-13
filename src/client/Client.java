@@ -197,6 +197,23 @@ public class Client{
 					String[] ids = new String[strs.length-2];
 					System.arraycopy(strs, 2, ids, 0, ids.length);
 					session.getroom().add(new Room(strs[1], ids)); //
+
+					////////////////////////////////
+
+					RoomCall roomCall = new RoomCall(ids);
+					roomCall.response("success");
+					roomCall.setrid(strs[1]);
+					toUI.offer(roomCall);
+					System.out.println("[Room] OK, id = "+strs[1]);
+				
+					////////////////////////////////
+
+					fromServer.poll();
+				}else if(strs[0].equals(Packet.USR_IN)){
+					toUI.offer(new LogNotifyCall(strs[1],true));
+					fromServer.poll();
+				}else if(strs[0].equals(Packet.USR_OUT)){
+					toUI.offer(new LogNotifyCall(strs[1],false));
 					fromServer.poll();
 				}
 			}
@@ -464,29 +481,26 @@ public class Client{
 					while(fromServer.isEmpty()){}
 					rets = fromServer.peek();
 					System.out.println(rets);
-					fromServer.poll();
+					
 					String[] strs = rets.split("/");
-					if(strs.length>2){
-						String ret = strs[0];
-						String roomid = strs[1];
-						if(ret.equals(Packet.ROOM_OK)){
-							roomCall.setrid(roomid);
-							roomCall.response("success");
-							toUI.offer(roomCall);
-							System.out.println("[Room] OK, id = "+roomid);
-							Room r = new Room(roomid, roomCall.ids);//
-							r.print();//
-							session.getroom().add(r);//
-						} else{
+					if(strs.length>0){
+						if(strs[0].equals(Packet.ROOM_OK)){
+							//let main handle function handle it
+							//roomCall.setrid(roomid);
+							//roomCall.response("success");
+							//toUI.offer(roomCall);
+							//System.out.println("[Room] OK, id = "+roomid);
+							//Room r = new Room(roomid, roomCall.ids);//
+							//r.print();//
+							//session.getroom().add(r);//
+						} else if(strs[0].equals(Packet.ROOM_FAIL)){
 							roomCall.response("fail");
 							toUI.offer(roomCall);
 							System.out.println("[Room] Fail");
+							fromServer.poll();
 						}
-					} else{
-						roomCall.response("fail");
-						toUI.offer(roomCall);
-						System.out.println("[Room] Fail");
 					}
+	
 				} catch(Exception e){
 					e.printStackTrace(System.out);
 					IsConnected = false;
@@ -494,7 +508,7 @@ public class Client{
 					disconnect.response("fail");
 					toUI.offer(disconnect);
 					System.out.println("[Room] Fail, disconnected");
-				}				
+				}		
 			} else{
 				System.out.println("Not Yet Logged In");
 			}

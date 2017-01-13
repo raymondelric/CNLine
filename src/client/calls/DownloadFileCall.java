@@ -25,7 +25,7 @@ public class DownloadFileCall extends UiCallObject{
 	public void print(){
 		System.out.println("rid:   "+this.rid);
 		System.out.println("uid: "+this.uid);
-		System.out.println("filename: "+this._filename);
+		System.out.println("filename: "+this.filename);
 		try{
 		System.out.println("filepath: "+this.file.getCanonicalPath());
 		}catch(IOException e){}

@@ -64,7 +64,28 @@ public class UI extends Application{
     	splash = new SplashScreen();
     	//debug purpose only
     	//debug = new DebugScreen(fromMain);
-    	UI.pushIn(new ConnectCall("140.112.30.44",9000));
+    	BufferedReader br;
+    	try {
+    		br = new BufferedReader(new FileReader("./server.in"));
+	    
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        if (line != null) {
+	        	String[] server = line.split(":");
+	        	if(server.length >= 2){
+		            UI.pushIn(new ConnectCall(server[0],Integer.parseInt(server[1])) );
+		        }else{
+		        	throw new IOException();
+		        }
+	        }else{
+	        	throw new IOException();
+	        }
+	        br.close();
+	    } catch(Exception e){
+	    	alert(splash,"server.in file corrupted", "QAQ");
+	    }
+    	
 
     	//the main loop of handling stuff
     	Timeline looper = new Timeline(new KeyFrame(Duration.millis(300), new EventHandler<ActionEvent>() {
@@ -76,7 +97,7 @@ public class UI extends Application{
 		        //splash.printMsg("I am message "+i+"...");
 		        if(!fromMain.isEmpty()) {
 				UiCallObject call = fromMain.peek();
-				System.out.println("[UI] recieve something...");
+				//System.out.println("[UI] recieve something...");
 				if(call.type == UiCallObject.RESPOND){
 					switch(call.whatCall){
 						case UiCallObject.CONNECT_TO_SERVER:
@@ -207,6 +228,13 @@ public class UI extends Application{
 								alert(splash, "Download Fail", "QWQ");
 							}
 							break;
+
+						case UiCallObject.SOMEONE_LOGIN_OUT:
+							LogNotifyCall lic  = (LogNotifyCall)call;
+							for(RoomScreen rs : s){
+								rs.logEvent(lic.id, lic.login);
+							}
+						break;
 						default:
 							System.out.println("unidentified call number from Main to UI");
 							break;
@@ -456,11 +484,12 @@ class SplashScreen extends Stage{
 	}
 }
 class RoomScreen extends Stage{
+	public String[] usrInRoom;
 	public MessageGroup msgG;
 	public final String roomId;
 	public RoomScreen(String _rid, int _historysize){
 		roomId = _rid;
-
+		usrInRoom = null;
 		this.initModality(Modality.NONE);
         this.initStyle(StageStyle.TRANSPARENT);
         this.setTitle("Chatroom");
@@ -486,6 +515,7 @@ class RoomScreen extends Stage{
         	if(!typing.getText().equals("")){
 	        	//msgG.addBack(1, UI.id, typing.getText());
 	        	UI.pushIn(new MessageCall(roomId, typing.getText()));
+	        	typing.clear();
 	        }
         });
         Button fileBtn = new Button("Send some file(s)...");
@@ -521,6 +551,15 @@ class RoomScreen extends Stage{
 			msgG.addFront(0,"usr1","Message"+i+" front");
 			i++;
         }*/
+	}
+	public void logEvent(String _uid, boolean _login){
+		if(usrInRoom != null){
+			for(String s : usrInRoom){
+				if(s.equals(_uid)){
+						msgG.addBack((_login)?3:4, _uid, null);
+				}
+			}
+		}
 	}
 }
 
@@ -782,7 +821,7 @@ class FileBubble extends Group{
         	FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save File");
             System.out.println("Save File");
-            fileChooser.setInitialFileName("video.avi");
+            fileChooser.setInitialFileName(filename);
             fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("All Files", "*.*")
             );
@@ -791,8 +830,9 @@ class FileBubble extends Group{
             	System.out.print("Save File: ");
             	try{
                     System.out.println(file.getCanonicalPath());
-                    UI.pushIn(new FileCall("rid","uid",file)); //call to client
-
+                    //////////////////////////////////////////////////////////////////////////////////////////////
+                    UI.pushIn(new DownloadFileCall("rid", UI.id, null, file.getName(), file)); //call to client
+                    //////////////////////////////////////////////////////////////////////////////////////////////
                 }catch(IOException e){}
             }
         });
@@ -816,7 +856,7 @@ class LogBubble extends Group{
 		wrapper.setPrefWidth(CommonUi.WIDTH);
 		wrapper.setBackground(new Background(CommonUi.blackBg));
 		wrapper.setPadding(new Insets(2,2,2,2));
-		Label u = new Label(usr + " has " + ((login)? "joined the chatroom":"left"));
+		Label u = new Label(usr + ((login)? " is online":" has left"));
 		u.setWrapText(true);
 		u.setFont(new Font("Arial", 14));
 		u.setTextFill(Color.web("#FFFFFF"));
@@ -835,6 +875,7 @@ class LogBubble extends Group{
 }
 class RoomBox extends VBox{
 	VBox roomField;
+	String[] usrInRoom;
 	public RoomBox(String usr){
 		super(8);
 		Button addRoom = new Button("New Room...");
@@ -862,6 +903,11 @@ class RoomBox extends VBox{
 				}
 				str += " ";
 			}
+			for(RoomScreen rs : UI.s){
+        		if(rs.roomId.equals(_roomID)){
+        			rs.usrInRoom = usrInRoom;
+        		}
+        	}
 		}
 		Button btn = new Button(str);
 		btn.setId("RoomBtn");
