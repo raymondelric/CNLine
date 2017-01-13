@@ -1,18 +1,4 @@
-all: calls ui packet session cli
-
-calls: 
-	javac client/calls/*.java -encoding UTF-8
-
-ui:
-	javac client/ui/*.java -encoding UTF-8
-
-packet:
-	javac client/packet/*.java -encoding UTF-8
-
-session:
-	javac client/session/*.java -encoding UTF-8
-
-cli:
+all:
 	javac client/*.java -encoding UTF-8
 
 run:
