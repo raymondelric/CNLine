@@ -10,9 +10,15 @@ public class ConnectCall extends UiCallObject{
 		this.ip = _ip;
 		this.port = _port;
 	}
+	public void response(String res){
+		super.type = RESPOND;
+		if(res.equals("success")){
+			super.success = true;
+		}
+	}
 	public void print(){
 		System.out.println("ip:   "+this.ip);
-		System.out.println("port: "+Integer.toString(this.port));
+		System.out.println("port: "+this.port);
 		System.out.println("wc:   "+this.whatCall);
 		System.out.println("type: "+this.type);
 	}

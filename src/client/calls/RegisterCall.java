@@ -10,6 +10,12 @@ public class RegisterCall extends UiCallObject{
 		this.id = _id;
 		this.pswd = _pswd;
 	}
+	public void response(String res){
+		super.type = RESPOND;
+		if(res.equals("success")){
+			super.success = true;
+		}
+	}
 	public void print(){
 		System.out.println("id:   "+this.id);
 		System.out.println("pswd: "+this.pswd);

@@ -16,6 +16,16 @@ public class GetMessageCall extends UiCallObject{
 		this.rid = _rid;
 		this.msgid = _msgid;
 	}
+	public void response(String res){
+		super.type = RESPOND;
+		if(res.equals("success")){
+			super.success = true;
+		}
+	}
+	public void fill(String _uid, String _message){
+		uid = _uid;
+		message = _message;
+	}
 	public void print(){
 		System.out.println("rid:   "+this.rid);
 		System.out.println("msgid: "+this.msgid);
