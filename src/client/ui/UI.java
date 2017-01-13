@@ -63,11 +63,32 @@ public class UI extends Application{
     	s = new Vector<RoomScreen>();
     	splash = new SplashScreen();
     	//debug purpose only
-    	debug = new DebugScreen(fromMain);
-    	UI.pushIn(new ConnectCall("140.112.30.52",6655));
+    	//debug = new DebugScreen(fromMain);
+    	BufferedReader br;
+    	try {
+    		br = new BufferedReader(new FileReader("./server.in"));
+	    
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        if (line != null) {
+	        	String[] server = line.split(":");
+	        	if(server.length >= 2){
+		            UI.pushIn(new ConnectCall(server[0],Integer.parseInt(server[1])) );
+		        }else{
+		        	throw new IOException();
+		        }
+	        }else{
+	        	throw new IOException();
+	        }
+	        br.close();
+	    } catch(Exception e){
+	    	alert(splash,"server.in file corrupted", "QAQ");
+	    }
+    	
 
     	//the main loop of handling stuff
-    	Timeline looper = new Timeline(new KeyFrame(Duration.seconds(1), new EventHandler<ActionEvent>() {
+    	Timeline looper = new Timeline(new KeyFrame(Duration.millis(300), new EventHandler<ActionEvent>() {
 		    @Override
 		    public void handle(ActionEvent event) {
 		    	//UI.pushIn(new ConnectCall("140.112.30.52",6655));
@@ -76,6 +97,7 @@ public class UI extends Application{
 		        //splash.printMsg("I am message "+i+"...");
 		        if(!fromMain.isEmpty()) {
 				UiCallObject call = fromMain.peek();
+				//System.out.println("[UI] recieve something...");
 				if(call.type == UiCallObject.RESPOND){
 					switch(call.whatCall){
 						case UiCallObject.CONNECT_TO_SERVER:
@@ -87,15 +109,18 @@ public class UI extends Application{
 									rs.close();
 								}
 								s.clear();
-								splash.printMsg("Connection Fail");
+								splash.printMsg("Connection Fail",1);
 								splash.toggleMode(0);
 							}
 							break;
 						case UiCallObject.REGISTER:
 							RegisterCall rc = (RegisterCall)call;
 							if(call.success){
-								alert(splash, "Hi, you are a new user!", "Yes");
-								splash.roomsBox = new RoomBox(rc.id);
+								alert(splash, "Hi, "+rc.id+" you are a new user!", "Yes");
+								if(splash.roomsBox == null){
+									splash.roomsBox = new RoomBox(rc.id);
+								}
+								//System.out.println("RegisterRoombox");
 								id = rc.id;
 								splash.toggleMode(2);
 							}else{
@@ -110,7 +135,10 @@ public class UI extends Application{
 						case UiCallObject.LOGIN:
 							LoginCall lc = (LoginCall)call;
 							if(call.success){
-								splash.roomsBox = new RoomBox(lc.id);
+								if(splash.roomsBox == null){
+									splash.roomsBox = new RoomBox(lc.id);
+								}
+								//System.out.println("LoginRoombox");
 								splash.toggleMode(2);
 								id = lc.id;
 								//call InRoomCalls
@@ -132,21 +160,26 @@ public class UI extends Application{
 								}
 								s.clear();
 								splash.toggleMode(1);
+								splash.roomsBox = null;
 							break;
 						case UiCallObject.CREATE_ROOM:
+								alert(splash, "New Room Created!", "OK");
 								RoomCall roomc = (RoomCall)call;
 								s.add(new RoomScreen(roomc.rid, 0));
 								splash.roomsBox.addRoom(roomc.rid, roomc.ids);
 								splash.sizeToScene();
 							break;
 						case UiCallObject.CHECK_EXIST_ID:
+								CheckIDCall cic = (CheckIDCall)call;
 							for(PendingPair pp : checkingUid){
-								if(pp.id.equals("")){
+								if(pp.id.equals(cic.id)){
 									if(call.success){
 										pp.pendingFrame.exist();
 									}else{
 										pp.pendingFrame.noExist();
 									}
+									checkingUid.remove(pp);
+									break;
 								}
 							}
 							break;
@@ -163,18 +196,16 @@ public class UI extends Application{
 							break;
 						case UiCallObject.GET_MESSAGE:
 							GetMessageCall gmc = (GetMessageCall)call;
+							System.out.println("[UI] a message!..."+gmc.rid+"?!");
 							for(RoomScreen rs : s){
 								if(gmc.rid.equals(rs.roomId)){
-									if(gmc.msgid == rs.msgG.topMsgID){
-										if(gmc.uid.equals(id)){
-											rs.msgG.addFront(1, gmc.uid, gmc.message);
-										}else{
-											rs.msgG.addFront(0, gmc.uid, gmc.message);
-										}
-									}else{
+									if(gmc.msgid == 0){
+										System.out.println("[UI] new message");
 										rs.msgG.addBack(0, gmc.uid, gmc.message);
+									}else{
+										System.out.println("[UI] old message");
+										rs.msgG.addFront(0, gmc.uid, gmc.message);
 									}
-									break;
 								}
 							}
 							break;
@@ -197,6 +228,13 @@ public class UI extends Application{
 								alert(splash, "Download Fail", "QWQ");
 							}
 							break;
+
+						case UiCallObject.SOMEONE_LOGIN_OUT:
+							LogNotifyCall lic  = (LogNotifyCall)call;
+							for(RoomScreen rs : s){
+								rs.logEvent(lic.id, lic.login);
+							}
+						break;
 						default:
 							System.out.println("unidentified call number from Main to UI");
 							break;
@@ -264,7 +302,7 @@ public class UI extends Application{
         scene.getStylesheets().add(UI.css);
         CommonUi.setDrag(layout, alertBox);
         alertBox.setScene(scene);
-        alertBox.showAndWait();
+        alertBox.show();
     }
     public static void pushIn(client.calls.UiCallObject call){
     	toMain.offer(call);
@@ -284,6 +322,7 @@ class SplashScreen extends Stage{
 	private int mode;
 	private LoadingIcon li;
 	public SplashScreen(){
+		roomsBox = null;
 		connected = false;
 		this.initModality(Modality.NONE);
         this.initStyle(StageStyle.TRANSPARENT);
@@ -319,7 +358,7 @@ class SplashScreen extends Stage{
         	System.out.println("Login: "+accountTxt.getText()  +" password: "+passTxt.getText());
         	if(CommonUi.validateID(accountTxt.getText()) && CommonUi.validateID(passTxt.getText())){
         		UI.pushIn(new LoginCall(accountTxt.getText(),passTxt.getText()));
-        		printMsg("Trying to log in...");
+        		printMsg("Trying to log in...",0);
         		toggleMode(0);
         	}else{
         		UI.alert(this, "Don't enter wierd ID or Password, please.", "Got it");
@@ -331,7 +370,7 @@ class SplashScreen extends Stage{
         	if(CommonUi.validateID(accountTxt.getText()) && CommonUi.validateID(passTxt.getText())){
         		UI.pushIn(new RegisterCall(accountTxt.getText(),passTxt.getText()));
         		toggleMode(0);
-        		printMsg("Trying to register and log in...");
+        		printMsg("Trying to register and log in...",0);
         	}else{
         		UI.alert(this, "Don't enter wierd ID or Password, please.", "Got it");
         	}
@@ -357,9 +396,12 @@ class SplashScreen extends Stage{
         this.setAlwaysOnTop(true);
         toggleMode(0);
 	}
-	public void printMsg(String s){
+	public void printMsg(String s, int button){
 		if(s!=null){
 			welcomeMsg.setText(s);
+			if(button == 1){
+				li.stop();
+			}
 		}
 	}
 	public void toggleMode(int _mode){
@@ -442,11 +484,12 @@ class SplashScreen extends Stage{
 	}
 }
 class RoomScreen extends Stage{
+	public String[] usrInRoom;
 	public MessageGroup msgG;
 	public final String roomId;
 	public RoomScreen(String _rid, int _historysize){
 		roomId = _rid;
-
+		usrInRoom = null;
 		this.initModality(Modality.NONE);
         this.initStyle(StageStyle.TRANSPARENT);
         this.setTitle("Chatroom");
@@ -461,7 +504,7 @@ class RoomScreen extends Stage{
 		ghost.setFill(Color.web("rgba(0,0,0,0)"));
         //layout.getChildren().add(new Label("Press a button"));
         //layout.getChildren().add(new LoadingIcon());
-        msgG = new MessageGroup(_historysize-1, this);
+        msgG = new MessageGroup(_historysize, this);
         HBox typeArea = new HBox(8);
         TextArea typing = new TextArea ();
         typing.setPrefWidth(CommonUi.WIDTH*0.80);
@@ -470,8 +513,9 @@ class RoomScreen extends Stage{
         sendBtn.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         sendBtn.setOnAction(event->{
         	if(!typing.getText().equals("")){
-	        	msgG.addBack(1, UI.id, typing.getText());
+	        	//msgG.addBack(1, UI.id, typing.getText());
 	        	UI.pushIn(new MessageCall(roomId, typing.getText()));
+	        	typing.clear();
 	        }
         });
         Button fileBtn = new Button("Send some file(s)...");
@@ -507,6 +551,15 @@ class RoomScreen extends Stage{
 			msgG.addFront(0,"usr1","Message"+i+" front");
 			i++;
         }*/
+	}
+	public void logEvent(String _uid, boolean _login){
+		if(usrInRoom != null){
+			for(String s : usrInRoom){
+				if(s.equals(_uid)){
+						msgG.addBack((_login)?3:4, _uid, null);
+				}
+			}
+		}
 	}
 }
 
@@ -545,11 +598,13 @@ class MessageGroup extends Group{
 	private ScrollPane sp;
 	private VBox msgWrapper;
 	private LinkedList<MessageBubble> msgBubs;
-	public int topMsgID;
+	public int historySize;
+	public int shownMessage;
 	private RoomScreen parent;
-	public MessageGroup(int _newestMsgID, RoomScreen _p){
+	public MessageGroup(int _historySize, RoomScreen _p){
 		parent = _p;
-		topMsgID = _newestMsgID;
+		shownMessage = 0;
+		historySize = _historySize;
 		msgWrapper = new VBox(8);
 		msgWrapper.setFillWidth(true);
      	msgWrapper.setPrefWidth(CommonUi.WIDTH);
@@ -557,8 +612,10 @@ class MessageGroup extends Group{
      	history.setMaxWidth(Double.MAX_VALUE);
      	msgWrapper.getChildren().add(0,history);
      	history.setOnAction(event -> {
-     		if(topMsgID>=0){
-        		UI.pushIn(new GetMessageCall("roomID", topMsgID));
+     		if(shownMessage < historySize){
+     			System.out.println("[" + shownMessage+" of "+ historySize+ " messages shown]");
+        		UI.pushIn(new GetMessageCall(parent.roomId, shownMessage));
+        		if(shownMessage==0) historySize--; //hot fix
         	}else{
         		UI.alert(parent, "All your history has been shown.", "wow");
         	}
@@ -571,11 +628,15 @@ class MessageGroup extends Group{
  		sp.setContent(msgWrapper);
  		sp.setPannable(true);
  		this.getChildren().add(sp);
- 		System.out.println("msgWrapper:"+msgWrapper.getWidth());
+ 		//System.out.println("msgWrapper:"+msgWrapper.getWidth());
 	}
 	public void addFront(int type, String userName, String msgContent){
-		topMsgID--;
-		msgWrapper.getChildren().add(0,new MessageBubble(userName, msgContent, false));
+		shownMessage++;
+		if(userName.equals(UI.id)){
+			msgWrapper.getChildren().add(1,new MyMessageBubble(userName, msgContent));
+		}else{
+			msgWrapper.getChildren().add(1,new MessageBubble(userName, msgContent, false));
+		}
 		System.out.println("ADD: "+msgContent);
 	}
 	public void addBack(int type, String userName, String msgContent){
@@ -588,10 +649,22 @@ class MessageGroup extends Group{
 		
 		switch(type){
 			case 0:
-				msgWrapper.getChildren().add(new MessageBubble(userName, msgContent,true));
+				shownMessage++;
+				historySize++;
+				if(userName.equals(UI.id)){
+					msgWrapper.getChildren().add(new MyMessageBubble(userName, msgContent));
+				}else{
+					msgWrapper.getChildren().add(new MessageBubble(userName, msgContent, true));
+				}
 			break;
 			case 1:
-				msgWrapper.getChildren().add(new MyMessageBubble(userName, msgContent));
+				shownMessage++;
+				historySize++;
+				if(userName.equals(UI.id)){
+					msgWrapper.getChildren().add(new MyMessageBubble(userName, msgContent));
+				}else{
+					msgWrapper.getChildren().add(new MessageBubble(userName, msgContent, true));
+				}
 			break;
 			case 2:
 				msgWrapper.getChildren().add(new FileBubble(userName, msgContent));
@@ -748,7 +821,7 @@ class FileBubble extends Group{
         	FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save File");
             System.out.println("Save File");
-            fileChooser.setInitialFileName("video.avi");
+            fileChooser.setInitialFileName(filename);
             fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("All Files", "*.*")
             );
@@ -757,8 +830,9 @@ class FileBubble extends Group{
             	System.out.print("Save File: ");
             	try{
                     System.out.println(file.getCanonicalPath());
-                    UI.pushIn(new FileCall("rid","uid",file)); //call to client
-
+                    //////////////////////////////////////////////////////////////////////////////////////////////
+                    UI.pushIn(new DownloadFileCall("rid", UI.id, null, file.getName(), file)); //call to client
+                    //////////////////////////////////////////////////////////////////////////////////////////////
                 }catch(IOException e){}
             }
         });
@@ -782,7 +856,7 @@ class LogBubble extends Group{
 		wrapper.setPrefWidth(CommonUi.WIDTH);
 		wrapper.setBackground(new Background(CommonUi.blackBg));
 		wrapper.setPadding(new Insets(2,2,2,2));
-		Label u = new Label(usr + " has " + ((login)? "joined the chatroom":"left"));
+		Label u = new Label(usr + ((login)? " is online":" has left"));
 		u.setWrapText(true);
 		u.setFont(new Font("Arial", 14));
 		u.setTextFill(Color.web("#FFFFFF"));
@@ -801,6 +875,7 @@ class LogBubble extends Group{
 }
 class RoomBox extends VBox{
 	VBox roomField;
+	String[] usrInRoom;
 	public RoomBox(String usr){
 		super(8);
 		Button addRoom = new Button("New Room...");
@@ -808,20 +883,37 @@ class RoomBox extends VBox{
         		new AddRoom();
         });
 		Button logout = new Button("Logout");
+		logout.setOnAction(event -> {
+			UI.pushIn(new LogoutCall());
+        		//LOGOUT CALL
+        });
 		roomField = new VBox(8);
+		
+
 		getChildren().addAll(new WhiteLabel("Hi, "+usr+", open a room to start chatting!"), roomField, addRoom, logout);
 	}
 	public void addRoom(String _roomID, String[] usrInRoom){
 		String str = "";
 		int i = 0;
 		if(usrInRoom!=null){
-			for (i = 0; i < usrInRoom.length-1; i++){
+			for (i = 0; i < usrInRoom.length; i++){
 				str += usrInRoom[i];
+				if(usrInRoom[i].equals(UI.id)){
+					str += "(you)";
+				}
+				str += " ";
 			}
+			for(RoomScreen rs : UI.s){
+        		if(rs.roomId.equals(_roomID)){
+        			rs.usrInRoom = usrInRoom;
+        		}
+        	}
 		}
 		Button btn = new Button(str);
 		btn.setId("RoomBtn");
 		roomField.getChildren().add(btn);
+		//getChildren().add(btn);
+		System.out.println("HI "+str);
 		btn.setOnAction(event -> {
         	for(RoomScreen rs : UI.s){
         		if(rs.roomId.equals(_roomID)){
@@ -870,7 +962,7 @@ class AddRoom extends Stage{
 
         Button createRoom = new Button("create the room!");
         createRoom.setOnAction(event -> {
-        	int num = 1;
+        	int num = 0;
 
         	
         	for(RoomUser user : usrVec){
@@ -887,6 +979,7 @@ class AddRoom extends Stage{
         		}
         	}
         	UI.pushIn(new RoomCall(ids));
+        	AddRoom.this.close();
         });
 
         layout.getChildren().addAll(usrs, moreUsr, createRoom);
@@ -914,6 +1007,7 @@ class RoomUser extends HBox{
 	ImageView check;
 	public RoomUser(int i){
 		super(5);
+		pendingStr = "";
 		this.setAlignment(Pos.CENTER);
     	uid = new TextField();
    		check = new ImageView(blank);
@@ -936,7 +1030,7 @@ class RoomUser extends HBox{
 		            	}else{
 		            		pendingStr = uid.getText();
 		            		UI.pending(new PendingPair(RoomUser.this, uid.getText()));
-		            		//UI.pushIn(new );
+		            		UI.pushIn(new CheckIDCall(uid.getText()));
 		            	}
 		        	}
 		        }

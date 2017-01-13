@@ -14,7 +14,7 @@ public class Client{
 	private static Queue<UiCallObject> fromUI; //read only
 	private static Queue<UiCallObject> toUI; //write only
 	private static Queue<String> fromServer; //write only
-	private static UI_test ui;
+	private static UI ui;
 	//private static UI ui;
 	private static Socket socket;
 	private static PrintWriter out;
@@ -40,7 +40,7 @@ public class Client{
 	}
 	
 	public static void initUI() {
-		ui = new client.ui.UI_test();
+		ui = new client.ui.UI();
 		//ui = new client.ui.UI();
 		ui.setQueue(toUI, fromUI);
 	}
@@ -55,7 +55,7 @@ public class Client{
 		try{
 			if(args[0].equals("UI")){
 				new Thread(new Runnable(){ public void run(){
-					//ui.run(args);
+					ui.run(args);
 				}
 				}).start();
 			}else{
@@ -104,7 +104,7 @@ public class Client{
 			for(int i = 0; i < len; i++){
 				String rid = strs[3*i+1];
 				String[] users = strs[3*i+2].split("\\|");
-				String[] msgs = strs[3*i+3].split("\\|");
+				String[] msgs = strs[3*i+3].split("\\|");//EVEN IF NO MESSAGE, SERVER SHOULD SEND SOMETHING
 				int msgcount = msgs.length;
 				Msg[] historyMsgs = new Msg[msgcount];
 				for(int j = 0; j < msgcount; j++){
@@ -184,7 +184,7 @@ public class Client{
 					for(Room room : session.getroom()){
 						if(strs[1].equals(room.rid)){
 							room.msgs.add(0, new Msg(strs[2], strs[3]));
-							GetMessageCall call = new GetMessageCall("",0);
+							GetMessageCall call = new GetMessageCall(strs[1],0);
 							call.fill(strs[2], strs[3]);
 							call.response("success");
 							toUI.offer(call);
@@ -197,6 +197,23 @@ public class Client{
 					String[] ids = new String[strs.length-2];
 					System.arraycopy(strs, 2, ids, 0, ids.length);
 					session.getroom().add(new Room(strs[1], ids)); //
+
+					////////////////////////////////
+
+					RoomCall roomCall = new RoomCall(ids);
+					roomCall.response("success");
+					roomCall.setrid(strs[1]);
+					toUI.offer(roomCall);
+					System.out.println("[Room] OK, id = "+strs[1]);
+				
+					////////////////////////////////
+
+					fromServer.poll();
+				}else if(strs[0].equals(Packet.USR_IN)){
+					toUI.offer(new LogNotifyCall(strs[1],true));
+					fromServer.poll();
+				}else if(strs[0].equals(Packet.USR_OUT)){
+					toUI.offer(new LogNotifyCall(strs[1],false));
 					fromServer.poll();
 				}
 			}
@@ -418,10 +435,23 @@ public class Client{
 			if(IsLoggedIn){
 				CheckIDCall checkidCall = (CheckIDCall)_call;
 				String cid = checkidCall.id;
-				String msg = Packet.makeMsg(Packet.ID, checkidCall.id);
+				String msg = Packet.makeMsg(Packet.ID, checkidCall.id+"/");
 				String ret = "";
 				try{
 					out.println(msg);
+					while(fromServer.isEmpty()){}
+					ret = fromServer.peek();
+					fromServer.poll();
+					if(ret.equals(Packet.ID_OK)){
+						checkidCall.response("success");
+						toUI.offer(checkidCall);
+						System.out.println("[ID chk] Exist, user = "+cid);
+					} else{
+						checkidCall.response("not exist");
+						toUI.offer(checkidCall);
+						System.out.println("[ID chk] Not Exist, user = "+cid);
+					}
+
 				} catch(Exception e){
 					IsConnected = false;
 					ConnectCall disconnect = new ConnectCall("", 0);
@@ -448,6 +478,29 @@ public class Client{
 				String rets = "";
 				try{
 					out.println(msg);
+					while(fromServer.isEmpty()){}
+					rets = fromServer.peek();
+					System.out.println(rets);
+					
+					String[] strs = rets.split("/");
+					if(strs.length>0){
+						if(strs[0].equals(Packet.ROOM_OK)){
+							//let main handle function handle it
+							//roomCall.setrid(roomid);
+							//roomCall.response("success");
+							//toUI.offer(roomCall);
+							//System.out.println("[Room] OK, id = "+roomid);
+							//Room r = new Room(roomid, roomCall.ids);//
+							//r.print();//
+							//session.getroom().add(r);//
+						} else if(strs[0].equals(Packet.ROOM_FAIL)){
+							roomCall.response("fail");
+							toUI.offer(roomCall);
+							System.out.println("[Room] Fail");
+							fromServer.poll();
+						}
+					}
+	
 				} catch(Exception e){
 					e.printStackTrace(System.out);
 					IsConnected = false;
@@ -455,7 +508,7 @@ public class Client{
 					disconnect.response("fail");
 					toUI.offer(disconnect);
 					System.out.println("[Room] Fail, disconnected");
-				}				
+				}		
 			} else{
 				System.out.println("Not Yet Logged In");
 			}

@@ -2,17 +2,14 @@ package client.calls;
 import java.util.*; //useful stuff
 import java.nio.charset.Charset; //for encoding problems
 
-public class LoginCall extends UiCallObject{
+public class LogNotifyCall extends UiCallObject{
 	public String id;
-	public String pswd;
+	public boolean login;
 
-	//respond
-	public String[] rids; //the rooms that this user currently has
-
-	public LoginCall(String _id, String _pswd){
-		super(LOGIN, REQUEST);
+	public LogNotifyCall(String _id, boolean _login){
+		super(SOMEONE_LOGIN_OUT, RESPOND);
 		this.id = _id;
-		this.pswd = _pswd;
+		this.login = _login;
 	}
 	public void response(String res){
 		super.type = RESPOND;
@@ -22,12 +19,8 @@ public class LoginCall extends UiCallObject{
 			success = false;
 		}
 	}
-	public void roomlist(String[] _rids){
-		rids = _rids;
-	}
 	public void print(){
 		System.out.println("id:   "+this.id);
-		System.out.println("pswd: "+this.pswd);
 		System.out.println("wc:   "+this.whatCall);
 		System.out.println("type: "+this.type);
 	}
