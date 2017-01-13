@@ -3,13 +3,11 @@ import java.util.*;
 import java.nio.charset.Charset;
 
 public class Session{
-	public String ID;
-	public Vector<Room> rooms;
+	private String uid;
+	private Vector<Room> rooms;
 
-	public Session(String _ID, Room... _rooms){
-		this.ID = _ID;
-		//this.rooms = Arrays.asList(_rooms);
-		//this.rooms = new LinkedList<Room>(_rooms);
+	public void set(String _uid, Room... _rooms){	
+		this.uid = _uid;
 		this.rooms = new Vector<Room>();
 		for (int i = 0;i < _rooms.length;i++){
 			this.rooms.add(_rooms[i]);
@@ -18,18 +16,35 @@ public class Session{
 	}
 
 	public void reset(){
-		this.ID = "";
-		//this.rooms = new LinkedList<Room>();
+		this.uid = "";
 		this.rooms = new Vector<Room>();
-		//this.rooms = new ArrayList<Room>();
 	}
-	public void print(){
-		System.out.println(this.ID);
+
+	public String getuid(){
+		return this.uid;
+	}
+
+	public Vector<Room> getroom(){
+		return this.rooms;
+	}
+
+	public String[] getrid(){
+		String[] ret = new String[this.rooms.size()];
+		int i = 0;
 		for(Room room : this.rooms){
-			System.out.println(room.rid);
+			ret[i++] = room.rid;
+		}
+		return ret;
+	}
+
+	public void print(){
+		System.out.println("id: "+this.uid);
+		for(Room room : this.rooms){
+			System.out.println("room"+room.rid);
 			for(Msg _msg : room.msgs){
 				System.out.println(_msg.owner+" "+_msg.msg);
 			}
+			System.out.println("");
 		}
 	}
 }

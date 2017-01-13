@@ -10,45 +10,47 @@ public class UI_test{
 	public int i;
 	//Testing code without GUI
 	public void runTest(){
-		int id = 1;
-		int pswd = -1;
-		//boolean connected = false, loggedin = false;
+		String[] ids;
+		String data;
+		String rid;
+		int t = 1;
 		while(true){
-			id++;
-			pswd--;
-			
-			if(id==100)
-				toMain.offer(new ExitCall());
-			else if(id==2)
-				toMain.offer(new ConnectCall("127.0.0.1",9000));
-			else if(id==3)
-				toMain.offer(new LoginCall(Integer.toString(5),Integer.toString(5)));
-			else if(id==4){
-				String rid = "1";
-				String data = "1111";
-				toMain.offer(new MessageCall(rid, data));
-			}
-			else if(id==5){
-				String[] ids = new String[1];
-				ids[0] = "5";
-				toMain.offer(new RoomCall(ids));
-			}
-			else if(id==6){
-				String[] ids = new String[1];
-				ids[0] = "5";
-				toMain.offer(new RoomCall(ids));
-			}
-			else if(id==7){
-				String[] ids = new String[1];
-				ids[0] = "5";
-				toMain.offer(new RoomCall(ids));
-			}
-
-
-			else if(id==8){
-				String rid = "3";
-				String data = "3333";
-				toMain.offer(new MessageCall(rid, data));
+			t++;		
+			switch(t){
+				case 2:
+					toMain.offer(new ConnectCall("127.0.0.1",9000));
+					break;
+				case 3:
+					toMain.offer(new RegisterCall(Integer.toString(5),Integer.toString(5)));
+					break;
+				case 4:
+					toMain.offer(new LogoutCall());
+					break;
+				case 5:
+					toMain.offer(new LoginCall(Integer.toString(5),Integer.toString(5)));
+					break;
+				case 6:
+					ids = new String[2];
+					ids[0] = "5";
+					ids[1] = "6";
+					toMain.offer(new RoomCall(ids));
+					break;
+				case 7:
+					rid = "1";
+					data = "msg5-"+Integer.toString(t);
+					toMain.offer(new MessageCall(rid, data));
+					break;
+				case 8:
+					rid = "1";
+					data = "msg5-"+Integer.toString(t);
+					toMain.offer(new MessageCall(rid, data));
+					break;
+				case 9:
+					rid = "1";
+					data = "msg5-"+Integer.toString(t);
+					toMain.offer(new MessageCall(rid, data));
+				default:
+					break;
 			}
 
 			try {
@@ -88,24 +90,24 @@ public class UI_test{
 				}else{ //response from Main (usually show something on screen)
 					switch(req.whatCall){
 						case UiCallObject.RESULT_CONNECT:
-							Result connectRes = (Result)req;
-							int connected = connectRes.result;
-							System.out.println(connected);
+							//Result connectRes = (Result)req;
+							//int connected = connectRes.result;
+							//System.out.println(connected);
 							break;
 						case UiCallObject.RESULT_REGISTER:
-							Result registerRes = (Result)req;
-							int registered = registerRes.result;
-							System.out.println(registered);
+							//Result registerRes = (Result)req;
+							//int registered = registerRes.result;
+							//System.out.println(registered);
 							break;
 						case UiCallObject.RESULT_LOGIN:
-							Result loginRes = (Result)req;
-							int loggedin = loginRes.result;
-							System.out.println(loggedin);
+							//Result loginRes = (Result)req;
+							//int loggedin = loginRes.result;
+							//System.out.println(loggedin);
 							break;
 						case UiCallObject.RESULT_LOGOUT:
-							Result logoutRes = (Result)req;
-							int loggedout = logoutRes.result;
-							System.out.println(loggedout);
+							//Result logoutRes = (Result)req;
+							//int loggedout = logoutRes.result;
+							//System.out.println(loggedout);
 							break;
 					}
 					fromMain.poll(); //handled, pop the request from queue
@@ -113,7 +115,9 @@ public class UI_test{
 			}
 		}//end of while loop
 	}
-
+	public void run(){
+		runTest();
+	}
 	public void setQueue(Queue<client.calls.UiCallObject> toUI, Queue<client.calls.UiCallObject> fromUI){
 		fromMain = toUI;
 		toMain = fromUI;

@@ -2,9 +2,11 @@ package client.calls;
 import java.util.*; //useful stuff
 import java.nio.charset.Charset; //for encoding problems
 
-public class LogoutCall extends UiCallObject{
-	public LogoutCall(){
-		super(LOGOUT, REQUEST);
+public class CheckIDCall extends UiCallObject{
+	public String id;
+	public CheckIDCall(String _id){
+		super(CHECK_EXIST_ID, REQUEST);
+		this.id = _id;
 	}
 	public void response(String res){
 		super.type = RESPOND;
@@ -13,6 +15,7 @@ public class LogoutCall extends UiCallObject{
 		}
 	}
 	public void print(){
+		System.out.println("id:   "+this.id);
 		System.out.println("wc:   "+this.whatCall);
 		System.out.println("type: "+this.type);
 	}

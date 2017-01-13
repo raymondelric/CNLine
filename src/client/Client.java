@@ -1,9 +1,10 @@
 package client;
-import java.util.*; //useful stuff
+import java.util.*;
 import java.util.concurrent.*;
-import java.io.*; //read write files
-import java.net.*; //socket
-import java.nio.charset.Charset; //for encoding problems
+import java.io.*;
+import java.net.*;
+import java.lang.*;
+import java.nio.charset.Charset;
 import client.calls.*;
 import client.packet.*;
 import client.session.*;
@@ -19,7 +20,7 @@ public class Client{
 	private static PrintWriter out;
 	private static BufferedReader in;
 	private static char[] buffer;
-	private static int buffersize = 1000;
+	private static int buffersize = 4096;
 
 	private static boolean IsConnected, IsLoggedIn, EXIT;
 	private static Session session;
@@ -77,48 +78,44 @@ public class Client{
 					if(size>0){
 						serverMsg = (new String(buffer)).substring(0, size);
 						System.out.println("[RST] "+serverMsg);
-						String[] strs = serverMsg.split("/");
-						if(strs[0].equals(Packet.NEWMSG)){
-							for(Room room : session.rooms){
-								if(strs[1].equals(room.rid)){
-									room.msgs.add(0, new Msg(strs[2], strs[3]));
-									break;
-								}
-							}
-						} else{
-							fromServer.offer(serverMsg);
-						}
+						fromServer.offer(serverMsg);
 					}
-				} catch(Exception e){
-				}
+				} catch(Exception e){}
+				try{
+					Thread.sleep(10);
+				} catch(InterruptedException e){}
+
 			}
 		}
 		}).start();
 	}
 
-	public static void createSession(String ID, String[] loginResponse){
-		Room[] Rooms = new Room[loginResponse.length-1];
-		for(int i = 1; i < loginResponse.length; i++){
-			int count = Integer.parseInt(loginResponse[i]);
-			Msg[] historyMsgs = new Msg[count];
-			String rid = "";
-			for(int j = 0; j < count; j++){
-				
-				while(fromServer.isEmpty()){}
+	public static void resetSession(){
+		session.reset();
+	}
 
-				String[] strs = fromServer.peek().split("/");
-				if(strs[0].equals(Packet.RECORD)){
-					rid = strs[1];
-					fromServer.poll();
-					historyMsgs[j] = new Msg(strs[2], strs[3]);
-				} else{
-					j--;
-					System.out.println(strs[0]);
+	public static void setSession(String ID, String[] loginResponse){
+		int len = loginResponse.length-1;
+		Room[] Rooms = new Room[len];
+		while(fromServer.isEmpty()){}
+		String[] strs = fromServer.peek().split("/");
+
+		if(strs[0].equals(Packet.RECORD)){
+			for(int i = 0; i < len; i++){
+				String rid = strs[3*i+1];
+				String[] users = strs[3*i+2].split("\\|");
+				String[] msgs = strs[3*i+3].split("\\|");
+				int msgcount = msgs.length;
+				Msg[] historyMsgs = new Msg[msgcount];
+				for(int j = 0; j < msgcount; j++){
+					String[] pair = msgs[j].split("\\$");
+					historyMsgs[j] = new Msg(pair[0], pair[1]);
 				}
+				Rooms[i] = new Room(rid, users, historyMsgs);
 			}
-			Rooms[i-1] = new Room(rid, historyMsgs);
+			fromServer.poll();
+			session.set(ID, Rooms);
 		}
-		session = new Session( ID, Rooms);
 	}
 
 	public static void run() {
@@ -139,24 +136,34 @@ public class Client{
 							login(call);
 							break;
 						case UiCallObject.LOGOUT:
-							logout();
+							logout(call);
 							break;
 						case UiCallObject.EXIT:
-							exit();
+							exit(call);
+							break;
+						case UiCallObject.CHECK_EXIST_ID:
+							checkID(call);
 							break;
 						case UiCallObject.CREATE_ROOM:
 							createroom(call);
+							break;
+						case UiCallObject.PEOPLE_IN_ROOM:
+							roommember(call);
 							break;
 						case UiCallObject.SEND_MESSAGE:
 							sendmessage(call);
 							break;
 						case UiCallObject.GET_MESSAGE:
+							getmessage(call);
 							break;
 						case UiCallObject.SEND_FILE:
+							//sendfile(call);
 							break;
 						case UiCallObject.GET_FILE:
+							//getfile(call);
 							break;
 						case UiCallObject.DOWNLOAD_FILE:
+
 							break;
 						default:
 							System.out.println("unidentified call number from UI");
@@ -168,8 +175,30 @@ public class Client{
 				}
 			}else{
 				try{
-					Thread.sleep(10);
+					Thread.sleep(100);
 				} catch(InterruptedException e){}
+			}
+			if(!fromServer.isEmpty()) {
+				String[] strs = fromServer.peek().split("/");
+				if(strs[0].equals(Packet.NEWMSG)){
+					for(Room room : session.getroom()){
+						if(strs[1].equals(room.rid)){
+							room.msgs.add(0, new Msg(strs[2], strs[3]));
+							GetMessageCall call = new GetMessageCall("",0);
+							call.fill(strs[2], strs[3]);
+							call.response("success");
+							toUI.offer(call);
+							break;
+						}
+					}
+					fromServer.poll();
+				}
+				else if(strs[0].equals(Packet.ROOM_OK)){
+					String[] ids = new String[strs.length-2];
+					System.arraycopy(strs, 2, ids, 0, ids.length);
+					session.getroom().add(new Room(strs[1], ids)); //
+					fromServer.poll();
+				}
 			}
 		}
 	}
@@ -188,22 +217,26 @@ public class Client{
 
 				String msg = Packet.makeMsg(Packet.CONNECT, "Happy New Year!");
 				String ret = "";
-				out.println(msg);		
+				out.println(msg);
 				while(fromServer.isEmpty()){}
 				ret = fromServer.peek();
 				fromServer.poll();
 				if(ret.equals(Packet.CONNECT_OK)){
 					IsConnected = true;
-					toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_OK));
-					System.out.println("Connect OK");
+					session = new Session();
+					connectCall.response("success");
+					toUI.offer(connectCall);
+					System.out.println("[Connect] Success");
 				} else{
-					toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_FAIL));
-					System.out.println("Connect fail");
+					connectCall.response("fail");
+					toUI.offer(connectCall);
+					System.out.println("[Connect] Fail");
 				}
 
 			} catch(Exception e){
-				toUI.offer(new Result(UiCallObject.RESULT_CONNECT, UiCallObject.RESULT_CONNECT_FAIL));
-				System.out.println("Connect fail");
+				connectCall.response("fail");
+				toUI.offer(connectCall);
+				System.out.println("[Connect] Fail");
 			}
 		}
 	}
@@ -219,24 +252,28 @@ public class Client{
 				ret = fromServer.peek();
 				fromServer.poll();
 				if(ret.equals(Packet.REGISTER_OK)){
-					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_OK));
-					System.out.println("Register OK");
+					registerCall.response("success");
+					toUI.offer(registerCall);
+					System.out.println("[Register] Success");
 					UiCallObject logincall = new LoginCall(registerCall.id, registerCall.pswd);
 					login(logincall);
 				} else if(ret.equals(Packet.REGISTER_DUP)){
-					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_DUP));
-					System.out.println("Register fail, duplicate");
-				} else if(ret.equals(Packet.REGISTER_ILE)){
-					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_ILE));
-					System.out.println("Register fail, illegal");
+					registerCall.response("duplicate");
+					toUI.offer(registerCall);
+					System.out.println("[Register] ID duplicate");
 				} else{
 					IsConnected = false;
-					toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_FAIL));
-					System.out.println("Register fail, disconnected");
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Register] Fail, disconnected");
 				}
 			} catch(Exception e){
-				toUI.offer(new Result(UiCallObject.RESULT_REGISTER, UiCallObject.RESULT_REGISTER_FAIL));
-				System.out.println("Register fail");
+				IsConnected = false;
+				ConnectCall disconnect = new ConnectCall("", 0);
+				disconnect.response("fail");
+				toUI.offer(disconnect);
+				System.out.println("[Register] Fail, disconnected");
 			}
 		} else{
 			System.out.println("Not Yet Connected");
@@ -255,35 +292,40 @@ public class Client{
 				String ret = rets[0];
 				System.out.print(ret);
 				fromServer.poll();
+				System.out.println("ret "+ret);
 				if(ret.equals(Packet.LOGIN_OK)){
-					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_OK));
-					createSession(loginCall.id, rets);
+					setSession(loginCall.id, rets);
 					IsLoggedIn = true;
-					System.out.println("Login OK, user = "+session.ID);
-				} else if(ret.equals(Packet.LOGIN_IDNF)){
-					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_IDNF));
-					System.out.println("Login fail, id "+loginCall.id+" not found");
-				} else if(ret.equals(Packet.LOGIN_WRPS)){
-					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_WRPS));
-					System.out.println("Login fail, wrong password");
-				} else if(ret.equals(Packet.LOGIN_ALRD)){
-					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_ALRD));
-					System.out.println("Login fail, already logged in");
+					loginCall.roomlist(session.getrid());
+					loginCall.response("success");
+					toUI.offer(loginCall);
+					System.out.println("[Login] Success, ID = "+session.getuid());
+				} else if(ret.equals(Packet.LOGIN_FAIL)){
+					loginCall.response("fail");
+					toUI.offer(loginCall);
+					System.out.println("[Login] Fail, id or password wrong");
 				} else{
 					IsConnected = false;
-					toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_FAIL));
-					System.out.println("Login fail");
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Login] Fail, disconnected0");
 				}
 			} catch(Exception e){
-				toUI.offer(new Result(UiCallObject.RESULT_LOGIN, UiCallObject.RESULT_LOGIN_FAIL));
-				System.out.println("Login fail");
+				e.printStackTrace();
+				IsConnected = false;
+				ConnectCall disconnect = new ConnectCall("", 0);
+				disconnect.response("fail");
+				toUI.offer(disconnect);
+				System.out.println("[Login] Fail, disconnected");
 			}
 		} else{
 			System.out.println("Not Yet Connected");
 		}
 	}
 	
-	public static void logout() {
+	public static void logout(UiCallObject _call) {
+		LogoutCall logoutCall = (LogoutCall)_call;
 		if(IsConnected){
 			if(IsLoggedIn){
 				String msg = Packet.makeMsg(Packet.LOGOUT);
@@ -295,16 +337,21 @@ public class Client{
 					fromServer.poll();
 					if(ret.equals(Packet.LOGOUT_OK)){
 						IsLoggedIn = false;
-						toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_OK));
-						System.out.println("Logout OK, user = "+session.ID);
+						resetSession();
+						logoutCall.response("success");
+						toUI.offer(logoutCall);
+						System.out.println("[Logout] Success, user = "+session.getuid());
 					} else{
-						toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_FAIL));
-						System.out.println("Logout fail");
+						logoutCall.response("success"); // logout fails?
+						toUI.offer(logoutCall);
+						System.out.println("[Logout] Success, user = "+session.getuid());
 					}
-
 				} catch(Exception e){
-					toUI.offer(new Result(UiCallObject.RESULT_LOGOUT, UiCallObject.RESULT_LOGOUT_FAIL));
-					System.out.println("Logout fail");
+					IsConnected = false;
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Logout] Fail, disconnected");
 				}
 			} else{
 				System.out.println("Not Yet Logged In");
@@ -322,9 +369,66 @@ public class Client{
 				try{
 					out.println(msg);
 				} catch(Exception e){
-					toUI.offer(new Result(UiCallObject.RESULT_MESSAGE, UiCallObject.RESULT_MESSAGE_FAIL));
-					System.out.println("Send message fail");
-				}				
+					IsConnected = false;
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Send Message] Fail, disconnected");
+				}
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
+		}
+	}
+
+	public static void getmessage(UiCallObject _call){
+		boolean flag = true;
+		if(IsConnected){
+			if(IsLoggedIn){
+				GetMessageCall getCall = (GetMessageCall)_call;
+				String rid = "";
+				int idx = getCall.msgid;
+				for(Room room : session.getroom()){
+					if(getCall.rid.equals(room.rid)){
+						flag = false;
+						getCall.fill(room.msgs.get(idx).owner, room.msgs.get(idx).msg);
+						getCall.response("success");
+						toUI.offer(getCall);
+						System.out.println("[Get Message] Success");
+						break;
+					}
+				}
+				if(flag){
+					getCall.response("fail");
+					toUI.offer(getCall);
+					System.out.println("[Get Message] Fail");
+				}
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
+		}	
+	}
+
+	public static void checkID(UiCallObject _call) {
+		if(IsConnected){
+			if(IsLoggedIn){
+				CheckIDCall checkidCall = (CheckIDCall)_call;
+				String cid = checkidCall.id;
+				String msg = Packet.makeMsg(Packet.ID, checkidCall.id);
+				String ret = "";
+				try{
+					out.println(msg);
+				} catch(Exception e){
+					IsConnected = false;
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Check ID] Fail, disconnected");
+				}		
 			} else{
 				System.out.println("Not Yet Logged In");
 			}
@@ -344,26 +448,13 @@ public class Client{
 				String rets = "";
 				try{
 					out.println(msg);
-					while(fromServer.isEmpty()){}
-					rets = fromServer.peek();
-					fromServer.poll();
-					String[] strs = rets.split("/");
-					String ret = strs[0];
-					String roomid = strs[1];
-					if(ret.equals(Packet.ROOM_OK)){
-						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_OK));
-						System.out.println("Room OK, id = "+roomid);
-						Room r = new Room(roomid);
-						r.print();
-						session.rooms.add(r);
-					} else{
-						toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_FAIL));
-						System.out.println("Room fail");
-					}
-
 				} catch(Exception e){
-					toUI.offer(new Result(UiCallObject.RESULT_ROOM, UiCallObject.RESULT_ROOM_FAIL));
-					System.out.println("Room fail");
+					e.printStackTrace(System.out);
+					IsConnected = false;
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Room] Fail, disconnected");
 				}				
 			} else{
 				System.out.println("Not Yet Logged In");
@@ -373,9 +464,91 @@ public class Client{
 		}
 	}
 
-	public static void exit() {
+/*	public static void createroom(UiCallObject _call) {
+		if(IsConnected){
+			if(IsLoggedIn){
+				RoomCall roomCall = (RoomCall)_call;
+				String[] param = new String[roomCall.ids.length+1];
+				param[0] = Packet.ROOM;
+				System.arraycopy(roomCall.ids, 0, param, 1, roomCall.ids.length);
+				String msg = Packet.makeMsg(param); // include user himself
+				String rets = "";
+				try{
+					out.println(msg);
+					while(fromServer.isEmpty()){}
+					rets = fromServer.peek();
+					System.out.println(rets);
+					fromServer.poll();
+					String[] strs = rets.split("/");
+					if(strs.length==2){
+						String ret = strs[0];
+						String roomid = strs[1];
+						if(ret.equals(Packet.ROOM_OK)){
+							roomCall.setrid(roomid);
+							roomCall.response("success");
+							toUI.offer(roomCall);
+							System.out.println("[Room] OK, id = "+roomid);
+							Room r = new Room(roomid);//
+							r.print();//
+							session.getroom().add(r);//
+						} else{
+							roomCall.response("fail");
+							toUI.offer(roomCall);
+							System.out.println("[Room] Fail");
+						}
+					} else{
+						roomCall.response("fail");
+						toUI.offer(roomCall);
+						System.out.println("[Room] Fail");
+					}
+
+				} catch(Exception e){
+					e.printStackTrace(System.out);
+					IsConnected = false;
+					ConnectCall disconnect = new ConnectCall("", 0);
+					disconnect.response("fail");
+					toUI.offer(disconnect);
+					System.out.println("[Room] Fail, disconnected");
+				}				
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
+		}
+	}*/
+
+	public static void roommember(UiCallObject _call) {
+		boolean flag = true;
+		if(IsConnected){
+			if(IsLoggedIn){
+				InRoomCall inroomCall = (InRoomCall)_call;
+				for(Room room : session.getroom()){
+					if(inroomCall.rid.equals(room.rid)){
+						flag = false;
+						inroomCall.fill(room.uids, room.msgs.size());
+						inroomCall.response("success");
+						toUI.offer(inroomCall);
+						System.out.println("[In Room] Success");
+						break;
+					}
+				}
+				if(flag){
+					inroomCall.response("fail");
+					toUI.offer(inroomCall);
+					System.out.println("[In Room] Fail");
+				}
+			} else{
+				System.out.println("Not Yet Logged In");
+			}
+		} else{
+			System.out.println("Not Yet Connected");
+		}	
+	}
+
+	public static void exit(UiCallObject _call) {
 		if(IsLoggedIn){
-			logout();
+			logout(_call);
 		}
 		IsConnected = false;
 		EXIT = true;

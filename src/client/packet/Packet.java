@@ -12,6 +12,7 @@ public class Packet{
 	public static final String ROOM = "05";
 	public static final String NEWMSG = "06";
 	public static final String RECORD = "07";
+	public static final String ID = "08";
 
 	public static final String CONNECT_OK = "10";
 	public static final String CONNECT_FAIL = "11";
@@ -32,6 +33,9 @@ public class Packet{
 
 	public static final String ROOM_OK = "50";
 	public static final String ROOM_FAIL = "51";
+
+	public static final String ID_OK = "60";
+	public static final String ID_NEX = "61";
 
 	public static String makeMsg(String... strs) {
 		String returnStr = strs[0];

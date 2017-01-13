@@ -4,24 +4,21 @@ import java.nio.charset.Charset;
 
 public class Room{
 	public String rid;
+	public String[] uids;
 	public Vector<Msg> msgs;
-	public Room(String _rid){
+	public Room(String _rid, String[] _uids){
 		this.rid = _rid;
-		System.out.println("in constructor");
-		//this.msgs = new LinkedList<Msg>();
+		this.uids = _uids;
 		this.msgs = new Vector<Msg>();
-		System.out.println("in constructor");
 	}
-	public Room(String _rid, Msg[] _msgs){
+	public Room(String _rid, String[] _uids, Msg[] _msgs){
 		this.rid = _rid;
-		//this.msgs = Arrays.asList(_msgs);
+		this.uids = _uids;
 		this.msgs = new Vector<Msg>();
 		for(int i = 0; i < _msgs.length;i++)
 			this.msgs.add(_msgs[i]);
 
 		System.out.println(this.msgs.size());
-
-		//this.msgs = new LinkedList<Msg>(_msgs);
 	}
 	public void print(){
 		System.out.println(this.rid);
