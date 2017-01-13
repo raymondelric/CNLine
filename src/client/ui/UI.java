@@ -64,7 +64,7 @@ public class UI extends Application{
     	splash = new SplashScreen();
     	//debug purpose only
     	debug = new DebugScreen(fromMain);
-    	UI.pushIn(new ConnectCall("140.112.30.52",6655));
+    	UI.pushIn(new ConnectCall("127.0.0.1",9000));
 
     	//the main loop of handling stuff
     	Timeline looper = new Timeline(new KeyFrame(Duration.seconds(1), new EventHandler<ActionEvent>() {
@@ -94,7 +94,7 @@ public class UI extends Application{
 						case UiCallObject.REGISTER:
 							RegisterCall rc = (RegisterCall)call;
 							if(call.success){
-								alert(splash, "Hi, you are a new user!", "Yes");
+								alert(splash, "Hi, "+rc.id+" you are a new user!", "Yes");
 								splash.roomsBox = new RoomBox(rc.id);
 								id = rc.id;
 								splash.toggleMode(2);
@@ -165,7 +165,7 @@ public class UI extends Application{
 							GetMessageCall gmc = (GetMessageCall)call;
 							for(RoomScreen rs : s){
 								if(gmc.rid.equals(rs.roomId)){
-									if(gmc.msgid == rs.msgG.topMsgID){
+									if(gmc.msgid == 0){
 										if(gmc.uid.equals(id)){
 											rs.msgG.addFront(1, gmc.uid, gmc.message);
 										}else{
@@ -461,7 +461,7 @@ class RoomScreen extends Stage{
 		ghost.setFill(Color.web("rgba(0,0,0,0)"));
         //layout.getChildren().add(new Label("Press a button"));
         //layout.getChildren().add(new LoadingIcon());
-        msgG = new MessageGroup(_historysize-1, this);
+        msgG = new MessageGroup(_historysize, this);
         HBox typeArea = new HBox(8);
         TextArea typing = new TextArea ();
         typing.setPrefWidth(CommonUi.WIDTH*0.80);
@@ -545,11 +545,13 @@ class MessageGroup extends Group{
 	private ScrollPane sp;
 	private VBox msgWrapper;
 	private LinkedList<MessageBubble> msgBubs;
-	public int topMsgID;
+	public int historySize;
+	public int shownMessage;
 	private RoomScreen parent;
-	public MessageGroup(int _newestMsgID, RoomScreen _p){
+	public MessageGroup(int _historySize, RoomScreen _p){
 		parent = _p;
-		topMsgID = _newestMsgID;
+		shownMessage = 0;
+		historySize = _historySize;
 		msgWrapper = new VBox(8);
 		msgWrapper.setFillWidth(true);
      	msgWrapper.setPrefWidth(CommonUi.WIDTH);
@@ -557,8 +559,8 @@ class MessageGroup extends Group{
      	history.setMaxWidth(Double.MAX_VALUE);
      	msgWrapper.getChildren().add(0,history);
      	history.setOnAction(event -> {
-     		if(topMsgID>=0){
-        		UI.pushIn(new GetMessageCall("roomID", topMsgID));
+     		if(shownMessage<historySize){
+        		UI.pushIn(new GetMessageCall("roomID", historySize));
         	}else{
         		UI.alert(parent, "All your history has been shown.", "wow");
         	}
@@ -574,7 +576,8 @@ class MessageGroup extends Group{
  		System.out.println("msgWrapper:"+msgWrapper.getWidth());
 	}
 	public void addFront(int type, String userName, String msgContent){
-		topMsgID--;
+		
+		shownMessage++;
 		msgWrapper.getChildren().add(0,new MessageBubble(userName, msgContent, false));
 		System.out.println("ADD: "+msgContent);
 	}
@@ -588,9 +591,13 @@ class MessageGroup extends Group{
 		
 		switch(type){
 			case 0:
+				shownMessage++;
+				historySize++;
 				msgWrapper.getChildren().add(new MessageBubble(userName, msgContent,true));
 			break;
 			case 1:
+				shownMessage++;
+				historySize++;
 				msgWrapper.getChildren().add(new MyMessageBubble(userName, msgContent));
 			break;
 			case 2:
@@ -808,6 +815,9 @@ class RoomBox extends VBox{
         		new AddRoom();
         });
 		Button logout = new Button("Logout");
+		logout.setOnAction(event -> {
+        		//LOGOUT CALL
+        });
 		roomField = new VBox(8);
 		getChildren().addAll(new WhiteLabel("Hi, "+usr+", open a room to start chatting!"), roomField, addRoom, logout);
 	}
