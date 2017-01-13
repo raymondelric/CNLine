@@ -18,6 +18,8 @@ public class LoginCall extends UiCallObject{
 		super.type = RESPOND;
 		if(res.equals("success")){
 			super.success = true;
+		}else{
+			success = false;
 		}
 	}
 	public void roomlist(String[] _rids){

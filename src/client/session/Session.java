@@ -38,13 +38,13 @@ public class Session{
 	}
 
 	public void print(){
-		System.out.println("id: "+this.uid);
+		//System.out.println("id: "+this.uid);
 		for(Room room : this.rooms){
-			System.out.println("room"+room.rid);
+			//System.out.println("room"+room.rid);
 			for(Msg _msg : room.msgs){
-				System.out.println(_msg.owner+" "+_msg.msg);
+				//System.out.println(_msg.owner+" "+_msg.msg);
 			}
-			System.out.println("");
+			//System.out.println("");
 		}
 	}
 }

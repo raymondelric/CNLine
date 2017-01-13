@@ -34,8 +34,8 @@ public class Packet{
 	public static final String ROOM_OK = "50";
 	public static final String ROOM_FAIL = "51";
 
-	public static final String ID_OK = "60";
-	public static final String ID_NEX = "61";
+	public static final String ID_OK = "80";
+	public static final String ID_NEX = "81";
 
 	public static String makeMsg(String... strs) {
 		String returnStr = strs[0];
