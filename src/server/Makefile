@@ -4,4 +4,5 @@ clean:
 	rm -rf room/*
 	rm -rf out
 run:
+	node download_file.js &
 	node server.js
