@@ -11,7 +11,17 @@ public class InRoomCall extends UiCallObject{
 	
 	public InRoomCall(String _rid){
 		super(PEOPLE_IN_ROOM, REQUEST);
-		rid = _rid;
+		this.rid = _rid;
+	}
+	public void response(String res){
+		super.type = RESPOND;
+		if(res.equals("success")){
+			super.success = true;
+		}
+	}
+	public void fill(String[] _ids, int _historySize){
+		this.ids = _ids;
+		this.historySize = _historySize;
 	}
 	public void print(){
 		System.out.print("ids: ");

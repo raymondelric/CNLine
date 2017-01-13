@@ -12,6 +12,7 @@ public class MessageCall extends UiCallObject{
 		this.rid = _rid;
 		this.data = _data;
 	}
+	public void response(String res){}
 	public void print(){
 		System.out.println("rid:   "+this.rid);
 		System.out.println("data: "+this.data);

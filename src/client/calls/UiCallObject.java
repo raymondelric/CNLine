@@ -65,5 +65,6 @@ public abstract class UiCallObject{
 		type = _type;
 		success = false;
 	}
+	public abstract void response(String res);
 	public abstract void print(); //debug
 }

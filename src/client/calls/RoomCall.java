@@ -12,6 +12,15 @@ public class RoomCall extends UiCallObject{
 		super(CREATE_ROOM, REQUEST);
 		this.ids = Arrays.copyOf(_ids, _ids.length);
 	}
+	public void response(String res){
+		super.type = RESPOND;
+		if(res.equals("success")){
+			super.success = true;
+		}
+	}
+	public void setrid(String _rid){
+		this.rid = _rid;
+	}
 	public void print(){
 		System.out.print("ids: ");
 		for(int i = 0; i < this.ids.length; i++){
