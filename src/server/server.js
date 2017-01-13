@@ -2,7 +2,7 @@ var net = require('net');
 var fs = require('fs');
 var sleep = require('sleep');
 
-var HOST = '127.0.0.1' ; // parameterize the IP of the Listen 
+var HOST = '140.112.30.43' ; // parameterize the IP of the Listen 
 var PORT = 9000 ; // TCP LISTEN port 
 
 const CONNECT = '00'
@@ -36,6 +36,9 @@ const LOGOUT_FAIL = '41'
 const ROOM_OK = '50'
 const ROOM_FAIL = '51'
 
+const CHECK_OK = '80'
+const CHECK_FALSE = '81'
+
 var IsLoggedIn = false;
 var id;
 var pass;
@@ -57,7 +60,6 @@ console.log("[Done loading "+num_account+" accounts]");
 console.log("[Checking Rooms]");
 room_setup();
 console.log("[Done loading "+num_room+" rooms]");
-
 
 
 
@@ -129,6 +131,8 @@ net.createServer ( function ( sock ) {
                 sock.write ( ret ) ; 
                 console.log("[Send history] " + id);
                 send_history(sock,id);
+            }else{
+                sock.write ( ret ) ; 
             }
 			
 		}
@@ -238,6 +242,7 @@ function login(sock,_id,_pwd){
             return LOGIN_OK;
         }
     }
+    console.log("[Login] Wrong");
 
     return LOGIN_FAIL;
 }
@@ -526,6 +531,8 @@ function send_history(sock, name){
 }
 
 function checkid(name){
+
+    console.log("[CheckID] "+name);
 
     for(var i = 0;i < acc.length;i++){
         if (name == acc[i])
