@@ -2,16 +2,16 @@ package client.calls;
 import java.util.*; //useful stuff
 import java.nio.charset.Charset; //for encoding problems
 
-public class CheckRoomCall extends UiCallObject{
+public class InRoomCall extends UiCallObject{
 	public String rid;
 
 	//respond
 	public String[] ids;
 	public int historySize;
 	
-	public CheckRoomCall(String[] _ids){
-		super(CREATE_ROOM, REQUEST);
-		this.ids = Arrays.copyOf(_ids, _ids.length);
+	public InRoomCall(String _rid){
+		super(PEOPLE_IN_ROOM, REQUEST);
+		rid = _rid;
 	}
 	public void print(){
 		System.out.print("ids: ");

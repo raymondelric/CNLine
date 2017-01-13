@@ -22,7 +22,7 @@ public class GetFileCall extends UiCallObject{
 	public void print(){
 		System.out.println("rid:   "+this.rid);
 		System.out.println("uid: "+this.uid);
-		System.out.println("filename: "+this._filename);
+		System.out.println("filename: "+this.filename);
 		System.out.println("wc:   "+this.whatCall);
 		System.out.println("type: "+this.type);
 	}

@@ -113,7 +113,9 @@ public class UI_test{
 			}
 		}//end of while loop
 	}
-
+	public void run(){
+		runTest();
+	}
 	public void setQueue(Queue<client.calls.UiCallObject> toUI, Queue<client.calls.UiCallObject> fromUI){
 		fromMain = toUI;
 		toMain = fromUI;

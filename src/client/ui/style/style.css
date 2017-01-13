@@ -15,6 +15,7 @@
 .button{
 	-fx-text-fill: black;
 	-fx-background-radius: 0;
+	-fx-max-width: 1500px;
 	-fx-background-color: 
 		rgba(255,218,69,0.2),
 		rgba(250,250,250,1.0);
@@ -54,4 +55,26 @@
         rgba(0,0,0,0.05),
         linear-gradient(#e3e3e3, #fdfdfd);
     -fx-background-insets: 0,0.5,4.5,5;
+}
+#RoomBtn{
+	-fx-text-fill: white;
+	-fx-font-size: 1.2em;
+	-fx-max-width: 1500px;
+	-fx-background-radius: 0;
+	-fx-background-color: 
+		rgba(255,218,69,0.2),
+		rgba(30,30,30,1.0);
+	-fx-background-insets: 0,1.5;
+	-fx-text-alignment: center;
+}
+#RoomBtn:hover {
+    -fx-background-color: 
+		rgba(255,218,69,0.2),
+		rgba(50,50,50,1);
+}
+#RoomBtn:pressed {
+	-fx-text-fill: white;
+    -fx-background-color: 
+		rgba(255,218,69,0.2),
+		rgba(10,10,10,1);
 }
