@@ -89,7 +89,7 @@ net.createServer ( function ( sock ) {
         console.log(data.toString());
 		var packet = data.toString();
 		var type = packet.substring(0,2);
-		var msg = packet.substring(3);
+		var msg = clean(packet.substring(3));
 		var ret = '';
 
         console.log(data.toString());
@@ -179,6 +179,7 @@ net.createServer ( function ( sock ) {
         client_socket.splice(index,1);
         console.log("remove "+index);
    	} ) ; 
+
 } ) .listen ( PORT, HOST ) ;
 
 console.log ( 'Server listening on ' + HOST +':'+ PORT ) ;
@@ -279,7 +280,10 @@ function broadcast( all_socket, room_user, body, room_id, owner){
         console.log("[Index, Username, Socket] "+ index + 
                     ", " + client_account[index] + ", " + client_socket[index]);
         console.log( "[Server Broadcast] " + NEW_MSG + "/" + room_id + "/"  + owner + "/" + body );
-        if ( index != -1 )  client_socket[index].write( NEW_MSG + "/" + room_id + "/"  + owner.toString() + "/" + body );
+        if ( index != -1 ){
+            console.log("[Find a user online]");
+            client_socket[index].write( NEW_MSG + "/" + room_id + "/"  + owner.toString() + "/" + body );
+        }
     } 
 }
 
@@ -410,7 +414,10 @@ function room_create_broadcast( all_socket, room_user, body, room_id){
         console.log("[Index, Username, Socket] "+ index + 
                     ", " + client_account[index] + ", " + client_socket[index]);
         console.log( "[Server New Room Broadcast] " + ROOM_OK + "/" + room_id + "/"   + body.toString() );
-        if ( index != -1 )  client_socket[index].write( ROOM_OK + "/" + room_id + "/" + body.toString() );
+        if ( index != -1 ){
+            console.log("[Find a user online]");
+            client_socket[index].write( ROOM_OK + "/" + room_id + "/" + body.toString() );
+        }
     } 
 }
 
@@ -539,22 +546,24 @@ function checkid(name){
     console.log("[CheckID] " + name);
 
     for(var i = 0;i < acc.length;i++){
-        
-        console.log("[Checking] "  + acc[i].toString().length + "  " + name.toString().length);
 
+        console.log("[Checking] "  + acc[i].toString() + "  " + name.toString());
         if (name.toString() === acc[i].toString()){
-            console.log("[Exist] " + acc[i]);
             return CHECK_OK;
         }
-
-        for(var j = 0;j < name.length && j < acc[i].toString().length;j++){
-                if (name[j] != acc[i].toString()[j]){
-                    console.log("[Lalala] " + name[j] + " " + acc[i].toString()[j]);
-                }
-        }
-        
     }
 
     return CHECK_FALSE;
 
 }
+
+function clean(input){
+    return input.replace("\r","");
+}
+
+process.on('uncaughtException',function(err){
+    
+    console.log(err.throw);
+    console.log("[Connect abort]");
+
+});
