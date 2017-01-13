@@ -13,6 +13,8 @@ const MESSAGE = '04'
 const CREATEROOM = '05'
 const NEW_MSG = '06'
 const RECORD = '07'
+const CHECKID = '08'
+const FILESEND = '09'
 
 const CONNECT_OK = '10'
 const CONNECT_FAIL = '11'
@@ -42,6 +44,7 @@ var client_socket = [];
 var client_account = [];
 var acc = [];
 var pwd = [];
+var filecount = 0;
 var num_account = 0;
 var num_room = 0;
 
@@ -142,9 +145,19 @@ net.createServer ( function ( sock ) {
             console.log("[Creating Room]"); 
             ret = create_room(strs);
             console.log("[Room result] " + ret); 
+		    //sock.write ( ret ) ; 
 
+        }
+        else if(type === FILESEND ){
+	        var strs = msg.split(/[\/,\n]+/);
+            console.log("[File recieved] " + strs[2]);
+            file_transfer(strs,sock);
+        }
+        else if (type === CHECKID){
+	        var strs = msg.split(/[\/,\n]+/);
+            console.log("[Check ID] " + strs[0]);
+            ret = checkid(strs[0]);
 		    sock.write ( ret ) ; 
-
         }
 		else if(type === LOGOUT){
 			IsLoggedIn = false;
@@ -266,6 +279,42 @@ function broadcast( all_socket, room_user, body, room_id, owner){
 }
 
 
+function file_transfer(input){
+    
+    var msg_buffer = [];
+    console.log(input);
+    msg_buffer[0] = input[0];
+    msg_buffer[1] = input[1];
+    //message("Server",msg_buffer);
+
+    console.log("[File ID] " + filecount);
+    var child = require('child_process').fork(__dirname + '/save_file');
+    var send_buffer = [];
+    send_buffer.push(input[0]);
+    send_buffer.push(input[1]);
+
+    child.send(send_buffer); //file name & data
+    console.log("[input] " + send_buffer);
+
+    filecount++;
+}
+
+/*
+function file_request(name,sock){
+    
+    console.log("[File Request] " + name);
+    var child = require('child_process').fork(__dirname + '/download_file');
+    var send_buffer1 = [];
+    send_buffer1.push(name);
+    send_buffer1.push(sock);
+    console.log("[input] " + send_buffer1);
+    child.send(name,'socket',sock);
+    //child.send(sock);
+
+    filecount++;
+
+}*/
+
 function create_room( current_user ){
 
     var fail = 0;
@@ -320,10 +369,44 @@ function create_room( current_user ){
         fs.writeFileSync("./room/" + num_room + ".user",buffer);
         fs.writeFileSync("./room/" + num_room + ".history","");
         
+        room_create_message(num_room,buffer);
+
         var result = ROOM_OK + "/" + num_room.toString();
        
         return result;
     }
+}
+
+function room_create_message(room_id,body){
+    
+    //var room_id = input[0];
+    //var body = input[1];
+    console.log("[Room ID] " + room_id);
+    console.log("[Body] " + body);
+
+    fs.readFileSync("./room/"+room_id+".user").toString().split('\n').forEach(
+        function(line){
+            if(line != ''){
+
+                var room_user = line.split(/[\/,\n]+/);
+                var index = room_user.indexOf('');
+                if (index != -1)    room_user.splice(index,1);
+                console.log("[All room user]" + room_user);
+
+                room_create_broadcast(client_socket,room_user,body,room_id);
+        }
+    });
+}
+
+function room_create_broadcast( all_socket, room_user, body, room_id){
+    
+    for (var i = 0; i < room_user.length ; i++){
+        var index = client_account.indexOf(room_user[i]);
+        console.log("[Index, Username, Socket] "+ index + 
+                    ", " + client_account[index] + ", " + client_socket[index]);
+        console.log( "[Server New Room Broadcast] " + ROOM_OK + "/" + room_id + "/"   + body.toString() );
+        if ( index != -1 )  client_socket[index].write( ROOM_OK + "/" + room_id + "/" + body.toString() );
+    } 
 }
 
 
@@ -358,6 +441,7 @@ function send_history_info(sock, name){
 function send_history(sock, name){
 
     var chat_room = [];
+    var hist_buf = RECORD + '/';
     
     for(var i = 1; i <= num_room; i++){
         fs.readFileSync("./room/"+i+".user").toString().split('\n').forEach(
@@ -375,22 +459,79 @@ function send_history(sock, name){
     console.log("[Room to send] " + chat_room);
 
     for(var i = 0; i < chat_room.length; i++){
+
+        console.log("[Debug] " + hist_buf);
+
+        // append room id
+        hist_buf += chat_room[i];
+        hist_buf += '/';
+        
+        console.log("[Append Room] " + hist_buf);
+
+        // append user 
+        fs.readFileSync("./room/"+chat_room[i]+".user").toString().split('\n').forEach(function(line){
+            if(line != ''){
+                var room_user = line.split(/[\/,\n]+/);
+                console.log("[Debug arr] "+ room_user);
+                for(var i = 0;i < room_user.length;i++){
+                    if ( i < room_user.length - 1 && room_user[i+1] != '' ){
+                        hist_buf += room_user[i];
+                        hist_buf += '|';
+                    }else if( room_user[i] != '' )
+                        hist_buf += room_user[i];
+
+                }
+            }
+        });
+        hist_buf += '/';
+        
+        console.log("[Append Users] " + hist_buf);
+
         var reverse_send = [];
 
         fs.readFileSync("./room/"+chat_room[i]+".history").toString().split('\n').forEach(function(line){
             if(line != ''){
-                reverse_send.push(chat_room[i] + "/" + line);
+                reverse_send.push(line);
                 //sock.write( chat_room[i].toString + "/" + line );
             }
-
-
         });
+
         for(var j = reverse_send.length - 1; j >= 0;j--){
-            sock.write( RECORD+"/"+reverse_send[j] );
-            console.log("[Send] "+RECORD+"/"+reverse_send[j].toString()+'\n');
-            sleep.usleep(10000);
+            //sock.write( RECORD+"/"+reverse_send[j] );
+            console.log("[Before Rep] "+reverse_send[j] );
+            reverse_send[j] = reverse_send[j].replace("/","$");
+            console.log("[After Rep] "+reverse_send[j] );
+
+            console.log("[Debug] j & l  " + j + "  " + (reverse_send.length-1));
+            if (j >= 1 && reverse_send[j-1] != '' ){
+                hist_buf += reverse_send[j];
+                hist_buf += '|';
+            }else if(reverse_send[i] != ''){
+                hist_buf += reverse_send[j];
+            }
+            console.log("[Send] " + reverse_send[j].toString()+'\n');
+            //sleep.usleep(10000);
         }
         reverse_send = [];
+        if (i < num_room - 1){
+            hist_buf += '/';
+        }
     }
+
+    hist_buf[hist_buf.length - 1] = '\0';
+    console.log("[Send]" + hist_buf );
+
+    sock.write(hist_buf);
+
+}
+
+function checkid(name){
+
+    for(var i = 0;i < acc.length;i++){
+        if (name == acc[i])
+            return CHECK_OK;
+    }
+
+    return CHECK_FALSE;
 
 }
