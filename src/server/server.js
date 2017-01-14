@@ -60,6 +60,12 @@ var num_room = 0;
 
 var chat_msg_num = [];
 
+require('dns').lookup(require('os').hostname(),function(err,add,fam){
+    console.log("[HOST] "+add);
+    if (add != HOST)
+        console.log("[ERR] Please modify the add in server.js and download.js");
+})
+
 console.log("[Loading Acc and Pwd]");
 load_acc();
 console.log("[Done loading "+num_account+" accounts]");
@@ -586,7 +592,6 @@ process.on('uncaughtException',function(err){
 });
 
 function hash_and_salt(id,pwd){
-
 
     console.log("[Encryption start]");
     const salt = "cn_line";
