@@ -190,7 +190,6 @@ function load_acc(){
     num_account = count;
 }
 
-
 function room_setup(){
     var roomdir = "./room/";
     var num = fs.readdirSync(roomdir);
