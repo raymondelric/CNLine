@@ -532,7 +532,9 @@ class RoomScreen extends Stage{
                     	try{
 	                        for (File file : list) {
 	                            System.out.println(file.getCanonicalPath());
+	                            //////////////////////////////////////////////////////////////////////////////////////////////
 	                            UI.pushIn(new FileCall(roomId,UI.id,file)); //call to client
+	                            //////////////////////////////////////////////////////////////////////////////////////////////
 	                        }
 	                    }catch(IOException e){}
                     }
@@ -831,7 +833,7 @@ class FileBubble extends Group{
             	try{
                     System.out.println(file.getCanonicalPath());
                     //////////////////////////////////////////////////////////////////////////////////////////////
-                    UI.pushIn(new DownloadFileCall("rid", UI.id, null, file.getName(), file)); //call to client
+                    UI.pushIn(new DownloadFileCall(file.getName(), file)); //call to client
                     //////////////////////////////////////////////////////////////////////////////////////////////
                 }catch(IOException e){}
             }
