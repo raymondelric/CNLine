@@ -15,6 +15,12 @@ public class FileCall extends UiCallObject{
 		this.uid = _uid;
 		this.file = _f;
 	}
+
+	public void response(String str){
+		super.type = RESPOND;
+		super.success = true;
+	}
+
 	public void print(){
 		System.out.println("rid:   "+this.rid);
 		System.out.println("uid: "+this.uid);

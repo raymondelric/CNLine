@@ -8,14 +8,12 @@ public class GetFileCall extends UiCallObject{
 	//request
 	public String rid;
 	public String uid;
-	public String fileQueryID;//if needed
 	public String filename;
 
-	public GetFileCall(String _rid, String _uid, String _fileQueryID, String _filename){
+	public GetFileCall(String _rid, String _uid, String _filename){
 		super(GET_FILE, RESPOND);
 		this.rid = _rid;
 		this.uid = _uid;
-		this.fileQueryID = _fileQueryID;
 		this.filename = _filename;
 
 	}

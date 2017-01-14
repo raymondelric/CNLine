@@ -13,6 +13,7 @@ public class Packet{
 	public static final String NEWMSG = "06";
 	public static final String RECORD = "07";
 	public static final String ID = "08";
+	public static final String FILE = "09";
 
 	public static final String CONNECT_OK = "10";
 	public static final String CONNECT_FAIL = "11";
@@ -37,6 +38,7 @@ public class Packet{
 	public static final String ID_OK = "80";
 	public static final String ID_NEX = "81";
 
+	public static final String FILE_NOTIFY = "97";
 	public static final String USR_IN = "98";
 	public static final String USR_OUT = "99";
 	

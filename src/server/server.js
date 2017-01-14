@@ -2,6 +2,9 @@ var net = require('net');
 var fs = require('fs');
 var sleep = require('sleep');
 
+'use strict';
+var crypto = require('crypto');
+
 var HOST = '140.112.30.44' ; // parameterize the IP of the Listen 
 var PORT = 9000 ; // TCP LISTEN port 
 
@@ -39,6 +42,10 @@ const ROOM_FAIL = '51'
 const CHECK_OK = '80'
 const CHECK_FALSE = '81'
 
+const FILE_NOTIFY = '97'
+const LOGIN_NOTIFY = '98'
+const LOGOUT_NOTIFY = '99'
+
 var IsLoggedIn = false;
 var id;
 var pass;
@@ -62,7 +69,7 @@ room_setup();
 console.log("[Done loading "+num_room+" rooms]");
 
 
-
+/*
 var key_arr = [];
 var inner_arr = [];
 
@@ -77,7 +84,7 @@ for(var i = 0;i < key_arr['apple'].length;i++)
 for(var i = 0;i < key_arr['b'].length;i++)
     console.log(key_arr['b'][i]);
 
-
+*/
 
 
 net.createServer ( function ( sock ) { 
@@ -104,7 +111,7 @@ net.createServer ( function ( sock ) {
 			var _id = strs[0];
 			var _pass = strs[1];
 			ret = REGISTER_OK;
-			console.log( 'register( ' + _id + ', ' + _pass + ' )' );
+			console.log( '[Register] ' + _id + ', ' + _pass );
             // handle register
             ret = register(sock,_id,_pass);
 		    sock.write ( ret ) ; 
@@ -114,13 +121,14 @@ net.createServer ( function ( sock ) {
 			var strs = msg.split(/[\/,\n]+/);
 			id = strs[0];
 			pass = strs[1];
-			IsLoggedIn = true;
+			//IsLoggedIn = true;
 			ret = LOGIN_OK;
-			console.log( 'login( ' + id + ', ' + pass + ' )' );
+			console.log( '[Login] ' + id + ', ' + pass );
             ret = login(sock,id,pass);
             
             if (ret == LOGIN_OK){
                 chat_msg_num = [];
+                login_notify(sock,id);
                 send_history_info(sock,id);
                 for (var i = 0;i < chat_msg_num.length; i++){
                     ret += "/";
@@ -140,7 +148,6 @@ net.createServer ( function ( sock ) {
 	        var strs = msg.split(/[\/,\n]+/);
             console.log("[Clinet Sending Message] Client : " +
                           client_account[client_socket.indexOf(sock)]); 
-
             ret = message(client_account[client_socket.indexOf(sock)],strs);
             console.log("[Message result] " + ret);
         }
@@ -149,13 +156,11 @@ net.createServer ( function ( sock ) {
             console.log("[Creating Room]"); 
             ret = create_room(strs);
             console.log("[Room result] " + ret); 
-		    //sock.write ( ret ) ; 
-
         }
         else if(type === FILESEND ){
 	        var strs = msg.split(/[\/,\n]+/);
             console.log("[File recieved] " + strs[2]);
-            file_transfer(strs,sock);
+            file_transfer(client_account[client_socket.indexOf(sock)],strs);
         }
         else if (type === CHECKID){
 	        var strs = msg.split(/[\/,\n]+/);
@@ -168,6 +173,7 @@ net.createServer ( function ( sock ) {
 			ret = LOGOUT_OK;
 			console.log( 'logout( ' + id + ', ' + pass + ' )' );
 		    sock.write ( ret ) ;
+            logout_notify(id);
 		}
 
 	} ) ; 
@@ -219,31 +225,40 @@ function register(sock,_id,_pwd){
             return REGISTER_DUP;
     }
 
-    var content = fs.appendFileSync("./pwd",_id+"/"+_pwd+"\n");
+    /*var content = fs.appendFileSync("./pwd",_id+"/"+_pwd+"\n");
     acc.push(_id);
     pwd.push(_pwd);
     content = fs.writeFileSync("./user/"+_id,_id+"/"+_pwd+"\n");
 
-    console.log("[Register done]");
+    var en_pwd = hash_and_salt(_id,_pwd);*/
+    
+    var en_pwd = hash_and_salt(_id,_pwd);
+    var content = fs.appendFileSync("./pwd",_id+"/"+en_pwd+"\n");
+    acc.push(_id);
+    pwd.push(en_pwd);
+    content = fs.writeFileSync("./user/"+_id,_id+"/"+en_pwd+"\n");
 
+    console.log("[Register done]");
+    
     return REGISTER_OK;
 }
 
 function login(sock,_id,_pwd){
 
     console.log(_id+"  "+_pwd);
+    var en_pwd = hash_and_salt(_id,_pwd);
     for(var i = 0;i < acc.length; i++){
         console.log(acc[i]+"  "+pwd[i]);
-        if (acc[i] === _id && pwd[i] === _pwd){
+        if (acc[i] === _id && pwd[i] === en_pwd){
              
             var index = client_socket.indexOf(sock);
             client_account[index] = _id;
-            console.log("[Login] Account id : " + client_account[index]);
+            console.log("[Login Success] Account id : " + client_account[index]);
             
             return LOGIN_OK;
         }
     }
-    console.log("[Login] Wrong");
+    console.log("[Login Fail]");
 
     return LOGIN_FAIL;
 }
@@ -288,19 +303,19 @@ function broadcast( all_socket, room_user, body, room_id, owner){
 }
 
 
-function file_transfer(input){
+function file_transfer(name,input){
     
     var msg_buffer = [];
     console.log(input);
-    msg_buffer[0] = input[0];
-    msg_buffer[1] = input[1];
-    //message("Server",msg_buffer);
+    msg_buffer[0] = input[0]; // room_id
+    msg_buffer[1] = input[1]; // filename
+    file_message(name,msg_buffer);
 
     console.log("[File ID] " + filecount);
     var child = require('child_process').fork(__dirname + '/save_file');
     var send_buffer = [];
-    send_buffer.push(input[0]);
-    send_buffer.push(input[1]);
+    send_buffer.push(input[1]); //file name
+    send_buffer.push(input[2]); //file data
 
     child.send(send_buffer); //file name & data
     console.log("[input] " + send_buffer);
@@ -308,6 +323,44 @@ function file_transfer(input){
     filecount++;
 }
 
+function file_message(name,input){
+    
+    var room_id = input[0];
+    var body = input[1];
+    console.log("[Room ID] " + room_id);
+    console.log("[Body] " + body);
+
+    fs.readFileSync("./room/"+room_id+".user").toString().split('\n').forEach(
+        function(line){
+            if(line != ''){
+
+                var room_user = line.split(/[\/,\n]+/);
+                var index = room_user.indexOf('');
+                if (index != -1)    room_user.splice(index,1);
+                console.log("[All room user]" + room_user);
+
+                file_broadcast(client_socket,room_user,body,room_id,name);
+
+                // need to write in log
+                /*fs.appendFileSync("./room/" + room_id + ".history",name
+                                  + "/" + body.toString() + "\n");*/
+        }
+    });
+}
+
+function file_broadcast( all_socket, room_user, body, room_id, owner){
+    
+    for (var i = 0; i < room_user.length ; i++){
+        var index = client_account.indexOf(room_user[i]);
+        console.log("[Index, Username, Socket] "+ index + 
+                    ", " + client_account[index] + ", " + client_socket[index]);
+        console.log( "[Server Broadcast] " + FILE_NOTIFY + "/" + room_id + "/"  + owner + "/" + body );
+        if ( index != -1 ){
+            console.log("[Find a user online]");
+            client_socket[index].write( FILE_NOTIFY + "/" + room_id + "/"  + owner.toString() + "/" + body );
+        }
+    } 
+}
 /*
 function file_request(name,sock){
     
@@ -376,7 +429,7 @@ function create_room( current_user ){
         }
         num_room += 1;
         fs.writeFileSync("./room/" + num_room + ".user",buffer);
-        fs.writeFileSync("./room/" + num_room + ".history","");
+        fs.writeFileSync("./room/" + num_room + ".history","System/Welcome" + '\n');
         
         room_create_message(num_room,buffer);
 
@@ -547,8 +600,8 @@ function checkid(name){
 
     for(var i = 0;i < acc.length;i++){
 
-        console.log("[Checking] "  + acc[i].toString() + "  " + name.toString());
         if (name.toString() === acc[i].toString()){
+            console.log("[Exist] "  + acc[i].toString());
             return CHECK_OK;
         }
     }
@@ -561,9 +614,48 @@ function clean(input){
     return input.replace("\r","");
 }
 
+function remove_empty(input){
+    for(var i = 0;i < input.length;i++){
+        // not done here
+    }
+}
+/*
 process.on('uncaughtException',function(err){
     
     console.log(err.throw);
     console.log("[Connect abort]");
 
-});
+});*/
+
+function hash_and_salt(id,pwd){
+
+
+    console.log("[Encryption start]");
+    const salt = "cn_line";
+    /*try{
+    var hash = crypto.createHmac('sha256', salt).update(pwd).digest('hex').toString();
+    }catch(err){
+        console.log("QQ");
+    }*/
+    var Cryptr = require('cryptr');
+    var cryptr = new Cryptr(id);
+    var hash = cryptr.encrypt(pwd,'sha256');
+    console.log("[Encryption PWD] " + hash);
+    return hash;
+}
+
+function login_notify(sock, id){
+
+    console.log("[Notify]");
+
+    for(var i = 0;i < client_socket.length;i++){
+        if (client_socket[i] != sock)
+            client_socket[i].write(LOGIN_NOTIFY + "/" + id);
+    }
+}
+
+function logout_notify(id){
+    for(var i = 0;i < client_socket.length;i++){
+            client_socket[i].write(LOGOUT_NOTIFY + "/" + id);
+    }
+}
