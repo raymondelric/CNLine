@@ -93,7 +93,7 @@ net.createServer ( function ( sock ) {
     client_socket.push(sock);
    
 	sock.on ( 'data', function ( data ) {
-        console.log(data.toString());
+        console.log("[Main Server] " + data.toString());
 		var packet = data.toString();
 		var type = packet.substring(0,2);
 		var msg = clean(packet.substring(3));
@@ -619,13 +619,13 @@ function remove_empty(input){
         // not done here
     }
 }
-/*
+
 process.on('uncaughtException',function(err){
     
     console.log(err.throw);
     console.log("[Connect abort]");
 
-});*/
+});
 
 function hash_and_salt(id,pwd){
 
