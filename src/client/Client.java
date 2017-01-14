@@ -19,6 +19,9 @@ public class Client{
 	private static Socket socket;
 	private static PrintWriter out;
 	private static BufferedReader in;
+	private static Socket fsocket;
+	private static PrintWriter fout;
+	private static BufferedReader fin;
 	private static char[] buffer;
 	private static char[] fbuffer;
 	private static int buffersize = 100000;
@@ -159,11 +162,11 @@ public class Client{
 							getmessage(call);
 							break;
 						case UiCallObject.SEND_FILE:
-							//sendfile(call);
+							sendfile(call);
 							break;
 
 						case UiCallObject.DOWNLOAD_FILE:
-							//downloadfile(call)
+							downloadfile(call);
 
 							break;
 						default:
@@ -220,6 +223,7 @@ public class Client{
 					GetFileCall getfileCall = new GetFileCall(strs[1], strs[2], strs[3]);
 					toUI.offer(getfileCall);
 					System.out.println("[GetFile] OK, rid = "+strs[1]+", owner = "+strs[2]+", filename = "+strs[3]);
+					fromServer.poll();
 				}
 			}
 		}
@@ -237,8 +241,8 @@ public class Client{
 				buffer = new char[buffersize];
 
 				fsocket = new Socket(connectCall.ip, 9001);
-				fout = new PrintWriter(socket.getOutputStream(), true);
-				fin = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				fout = new PrintWriter(fsocket.getOutputStream(), true);
+				fin = new BufferedReader(new InputStreamReader(fsocket.getInputStream()));
 				fbuffer = new char[buffersize];
 
 				createReadSocketThread();
@@ -552,6 +556,7 @@ public class Client{
 
 	public static void sendfile(UiCallObject _call) {
 		FileCall fileCall = (FileCall)_call;
+		System.out.println("[SendFile]");
 		String fileName = fileCall.file.getAbsolutePath();
 		try {
     			BufferedReader br = new BufferedReader(new FileReader(fileName));
@@ -566,35 +571,36 @@ public class Client{
 			String msg = Packet.makeMsg(Packet.FILE, fileCall.rid, fileCall.file.getName(), sb.toString());
 			String ret = "";
 			out.println(msg);
-
+			br.close();
 		} catch(Exception e){
 			e.printStackTrace();
-			connectCall.response("fail");
-			toUI.offer(connectCall);
+			e.printStackTrace(System.out);
+			IsConnected = false;
+			ConnectCall disconnect = new ConnectCall("", 0);
+			disconnect.response("fail");
+			toUI.offer(disconnect);
 			System.out.println("[Connect] Fail");
-		} finally {
-	        	br.close();
-	    	}
+		}
 	}
 
 	public static void downloadfile(UiCallObject _call) {
-		DownloadFileCall downloadfileCall = (DownlaodFileCall)_call;
+		DownloadFileCall downloadfileCall = (DownloadFileCall)_call;
 		try{
 			fout.println(downloadfileCall.filename);
 			Thread.sleep(100);
-			int fsize = fin.fread(fbuffer, 0, buffersize);
+			int fsize = fin.read(fbuffer, 0, buffersize);
 			String fserverMsg = "";
 			if(fsize>0){
 				fserverMsg = (new String(fbuffer)).substring(0, fsize);
 				System.out.println("[FSV] "+fserverMsg);
 			}
-			PrintWriter pw = new PrintWriter( downloadfileCall.filename.getAbsolutePath() ) ;
+			PrintWriter pw = new PrintWriter( downloadfileCall.file.getAbsolutePath() ) ;
 			pw.println( fserverMsg );
 						
 			downloadfileCall.response("success");
 			toUI.offer(downloadfileCall);
 			System.out.println("[Download] Success");
-
+			pw.close();
 		} catch(Exception e){
 			downloadfileCall.response("fail");
 			toUI.offer(downloadfileCall);

@@ -13,12 +13,12 @@ public class DownloadFileCall extends UiCallObject{
 	public File file; //the file, may need to open for writing
 
 	public DownloadFileCall(String _filename, File _f){
-
+		super(DOWNLOAD_FILE, REQUEST);
 		this.filename = _filename;
 		this.file = _f;
 	}
 
-	public void response(String str){
+	public void response(String res){
 		super.type = RESPOND;
 		if(res.equals("success")){
 			super.success = true;

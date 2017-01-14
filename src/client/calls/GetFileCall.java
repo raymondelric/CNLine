@@ -17,6 +17,7 @@ public class GetFileCall extends UiCallObject{
 		this.filename = _filename;
 
 	}
+	public  void response(String res){}
 	public void print(){
 		System.out.println("rid:   "+this.rid);
 		System.out.println("uid: "+this.uid);

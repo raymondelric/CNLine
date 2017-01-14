@@ -196,7 +196,7 @@ public class UI extends Application{
 							break;
 						case UiCallObject.GET_MESSAGE:
 							GetMessageCall gmc = (GetMessageCall)call;
-							System.out.println("[UI] a message!..."+gmc.rid+"?!");
+							//System.out.println("[UI] a message!..."+gmc.rid+"?!");
 							for(RoomScreen rs : s){
 								if(gmc.rid.equals(rs.roomId)){
 									if(gmc.msgid == 0){
@@ -239,6 +239,7 @@ public class UI extends Application{
 							System.out.println("unidentified call number from Main to UI");
 							break;
 					}
+					System.out.println("POLL");
 					fromMain.poll();
 				}else{
 					System.out.println("UI get request?!!");
@@ -802,6 +803,7 @@ class MyMessageBubble extends Group{
 
 class FileBubble extends Group{
 	ScaleTransition sa;
+	String fname;
 	public FileBubble(String usr, String filename){
 		VBox wrapper = new VBox(4);
 		wrapper.setFillWidth(true);
@@ -809,6 +811,7 @@ class FileBubble extends Group{
 		wrapper.setBackground(new Background(CommonUi.blackBg));
 		wrapper.setPrefWidth(CommonUi.WIDTH);
 		wrapper.setPadding(new Insets(2,2,2,2));
+		fname = filename;
 		Label u = new Label(usr + " has sent a file:" + filename);
 		u.setWrapText(true);
 		u.setFont(new Font("Arial", 14));
@@ -833,7 +836,7 @@ class FileBubble extends Group{
             	try{
                     System.out.println(file.getCanonicalPath());
                     //////////////////////////////////////////////////////////////////////////////////////////////
-                    UI.pushIn(new DownloadFileCall(file.getName(), file)); //call to client
+                    UI.pushIn(new DownloadFileCall(fname, file)); //call to client
                     //////////////////////////////////////////////////////////////////////////////////////////////
                 }catch(IOException e){}
             }
