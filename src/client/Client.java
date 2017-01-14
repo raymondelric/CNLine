@@ -19,8 +19,13 @@ public class Client{
 	private static Socket socket;
 	private static PrintWriter out;
 	private static BufferedReader in;
+	private static Socket fsocket;
+	private static PrintWriter fout;
+	private static BufferedReader fin;
 	private static char[] buffer;
-	private static int buffersize = 4096;
+	private static char[] fbuffer;
+	private static int buffersize = 100000;
+	private static int fbuffersize = 100000;
 
 	private static boolean IsConnected, IsLoggedIn, EXIT;
 	private static Session session;
@@ -157,12 +162,11 @@ public class Client{
 							getmessage(call);
 							break;
 						case UiCallObject.SEND_FILE:
-							//sendfile(call);
+							sendfile(call);
 							break;
-						case UiCallObject.GET_FILE:
-							//getfile(call);
-							break;
+
 						case UiCallObject.DOWNLOAD_FILE:
+							downloadfile(call);
 
 							break;
 						default:
@@ -215,6 +219,11 @@ public class Client{
 				}else if(strs[0].equals(Packet.USR_OUT)){
 					toUI.offer(new LogNotifyCall(strs[1],false));
 					fromServer.poll();
+				}else if(strs[0].equals(Packet.FILE_NOTIFY)){
+					GetFileCall getfileCall = new GetFileCall(strs[1], strs[2], strs[3]);
+					toUI.offer(getfileCall);
+					System.out.println("[GetFile] OK, rid = "+strs[1]+", owner = "+strs[2]+", filename = "+strs[3]);
+					fromServer.poll();
 				}
 			}
 		}
@@ -230,6 +239,12 @@ public class Client{
 				out = new PrintWriter(socket.getOutputStream(), true);
 				in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 				buffer = new char[buffersize];
+
+				fsocket = new Socket(connectCall.ip, 9001);
+				fout = new PrintWriter(fsocket.getOutputStream(), true);
+				fin = new BufferedReader(new InputStreamReader(fsocket.getInputStream()));
+				fbuffer = new char[buffersize];
+
 				createReadSocketThread();
 
 				String msg = Packet.makeMsg(Packet.CONNECT, "Happy New Year!");
@@ -486,13 +501,7 @@ public class Client{
 					if(strs.length>0){
 						if(strs[0].equals(Packet.ROOM_OK)){
 							//let main handle function handle it
-							//roomCall.setrid(roomid);
-							//roomCall.response("success");
-							//toUI.offer(roomCall);
-							//System.out.println("[Room] OK, id = "+roomid);
-							//Room r = new Room(roomid, roomCall.ids);//
-							//r.print();//
-							//session.getroom().add(r);//
+
 						} else if(strs[0].equals(Packet.ROOM_FAIL)){
 							roomCall.response("fail");
 							toUI.offer(roomCall);
@@ -516,60 +525,6 @@ public class Client{
 			System.out.println("Not Yet Connected");
 		}
 	}
-
-/*	public static void createroom(UiCallObject _call) {
-		if(IsConnected){
-			if(IsLoggedIn){
-				RoomCall roomCall = (RoomCall)_call;
-				String[] param = new String[roomCall.ids.length+1];
-				param[0] = Packet.ROOM;
-				System.arraycopy(roomCall.ids, 0, param, 1, roomCall.ids.length);
-				String msg = Packet.makeMsg(param); // include user himself
-				String rets = "";
-				try{
-					out.println(msg);
-					while(fromServer.isEmpty()){}
-					rets = fromServer.peek();
-					System.out.println(rets);
-					fromServer.poll();
-					String[] strs = rets.split("/");
-					if(strs.length==2){
-						String ret = strs[0];
-						String roomid = strs[1];
-						if(ret.equals(Packet.ROOM_OK)){
-							roomCall.setrid(roomid);
-							roomCall.response("success");
-							toUI.offer(roomCall);
-							System.out.println("[Room] OK, id = "+roomid);
-							Room r = new Room(roomid);//
-							r.print();//
-							session.getroom().add(r);//
-						} else{
-							roomCall.response("fail");
-							toUI.offer(roomCall);
-							System.out.println("[Room] Fail");
-						}
-					} else{
-						roomCall.response("fail");
-						toUI.offer(roomCall);
-						System.out.println("[Room] Fail");
-					}
-
-				} catch(Exception e){
-					e.printStackTrace(System.out);
-					IsConnected = false;
-					ConnectCall disconnect = new ConnectCall("", 0);
-					disconnect.response("fail");
-					toUI.offer(disconnect);
-					System.out.println("[Room] Fail, disconnected");
-				}				
-			} else{
-				System.out.println("Not Yet Logged In");
-			}
-		} else{
-			System.out.println("Not Yet Connected");
-		}
-	}*/
 
 	public static void roommember(UiCallObject _call) {
 		boolean flag = true;
@@ -597,6 +552,60 @@ public class Client{
 		} else{
 			System.out.println("Not Yet Connected");
 		}	
+	}
+
+	public static void sendfile(UiCallObject _call) {
+		FileCall fileCall = (FileCall)_call;
+		System.out.println("[SendFile]");
+		String fileName = fileCall.file.getAbsolutePath();
+		try {
+    			BufferedReader br = new BufferedReader(new FileReader(fileName));
+       			StringBuilder sb = new StringBuilder();
+		        String line = br.readLine();
+       			while (line != null) {
+          	  		sb.append(line);
+			        sb.append("\n");
+        	    		line = br.readLine();
+		        }
+
+			String msg = Packet.makeMsg(Packet.FILE, fileCall.rid, fileCall.file.getName(), sb.toString());
+			String ret = "";
+			out.println(msg);
+			br.close();
+		} catch(Exception e){
+			e.printStackTrace();
+			e.printStackTrace(System.out);
+			IsConnected = false;
+			ConnectCall disconnect = new ConnectCall("", 0);
+			disconnect.response("fail");
+			toUI.offer(disconnect);
+			System.out.println("[Connect] Fail");
+		}
+	}
+
+	public static void downloadfile(UiCallObject _call) {
+		DownloadFileCall downloadfileCall = (DownloadFileCall)_call;
+		try{
+			fout.println(downloadfileCall.filename);
+			Thread.sleep(100);
+			int fsize = fin.read(fbuffer, 0, buffersize);
+			String fserverMsg = "";
+			if(fsize>0){
+				fserverMsg = (new String(fbuffer)).substring(0, fsize);
+				System.out.println("[FSV] "+fserverMsg);
+			}
+			PrintWriter pw = new PrintWriter( downloadfileCall.file.getAbsolutePath() ) ;
+			pw.println( fserverMsg );
+						
+			downloadfileCall.response("success");
+			toUI.offer(downloadfileCall);
+			System.out.println("[Download] Success");
+			pw.close();
+		} catch(Exception e){
+			downloadfileCall.response("fail");
+			toUI.offer(downloadfileCall);
+			System.out.println("[Download] Fail");
+		}
 	}
 
 	public static void exit(UiCallObject _call) {
