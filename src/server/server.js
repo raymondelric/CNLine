@@ -68,25 +68,6 @@ console.log("[Checking Rooms]");
 room_setup();
 console.log("[Done loading "+num_room+" rooms]");
 
-
-/*
-var key_arr = [];
-var inner_arr = [];
-
-inner_arr.push(1,2,3,4,5);
-key_arr['apple'] = inner_arr;
-inner_arr = [];
-inner_arr.push(1,3,5);
-key_arr['b'] = inner_arr;
-
-for(var i = 0;i < key_arr['apple'].length;i++)
-    console.log(key_arr['apple'][i]);
-for(var i = 0;i < key_arr['b'].length;i++)
-    console.log(key_arr['b'][i]);
-
-*/
-
-
 net.createServer ( function ( sock ) { 
 	console.log ( 'CONNECTED: '+sock.remoteAddress +':'+ sock.remotePort ) ;
 
@@ -213,8 +194,11 @@ function load_acc(){
 function room_setup(){
     var roomdir = "./room/";
     var num = fs.readdirSync(roomdir);
-    console.log(num_room);
-    num_room = num.length / 2;
+    //num.splice(".gitkeep");
+    console.log("[ROOM] " + num);
+    
+    // consider gitkeep
+    num_room = (num.length-1) / 2;  
     console.log(num.length);
 }
 
@@ -225,13 +209,6 @@ function register(sock,_id,_pwd){
             return REGISTER_DUP;
     }
 
-    /*var content = fs.appendFileSync("./pwd",_id+"/"+_pwd+"\n");
-    acc.push(_id);
-    pwd.push(_pwd);
-    content = fs.writeFileSync("./user/"+_id,_id+"/"+_pwd+"\n");
-
-    var en_pwd = hash_and_salt(_id,_pwd);*/
-    
     var en_pwd = hash_and_salt(_id,_pwd);
     var content = fs.appendFileSync("./pwd",_id+"/"+en_pwd+"\n");
     acc.push(_id);
@@ -341,9 +318,6 @@ function file_message(name,input){
 
                 file_broadcast(client_socket,room_user,body,room_id,name);
 
-                // need to write in log
-                /*fs.appendFileSync("./room/" + room_id + ".history",name
-                                  + "/" + body.toString() + "\n");*/
         }
     });
 }
@@ -361,21 +335,6 @@ function file_broadcast( all_socket, room_user, body, room_id, owner){
         }
     } 
 }
-/*
-function file_request(name,sock){
-    
-    console.log("[File Request] " + name);
-    var child = require('child_process').fork(__dirname + '/download_file');
-    var send_buffer1 = [];
-    send_buffer1.push(name);
-    send_buffer1.push(sock);
-    console.log("[input] " + send_buffer1);
-    child.send(name,'socket',sock);
-    //child.send(sock);
-
-    filecount++;
-
-}*/
 
 function create_room( current_user ){
 
@@ -632,11 +591,6 @@ function hash_and_salt(id,pwd){
 
     console.log("[Encryption start]");
     const salt = "cn_line";
-    /*try{
-    var hash = crypto.createHmac('sha256', salt).update(pwd).digest('hex').toString();
-    }catch(err){
-        console.log("QQ");
-    }*/
     var Cryptr = require('cryptr');
     var cryptr = new Cryptr(id);
     var hash = cryptr.encrypt(pwd,'sha256');
