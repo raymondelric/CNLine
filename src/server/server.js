@@ -46,7 +46,6 @@ const FILE_NOTIFY = '97'
 const LOGIN_NOTIFY = '98'
 const LOGOUT_NOTIFY = '99'
 
-var IsLoggedIn = false;
 var id;
 var pass;
 
@@ -108,7 +107,6 @@ net.createServer ( function ( sock ) {
 			var strs = msg.split(/[\/,\n]+/);
 			id = strs[0];
 			pass = strs[1];
-			//IsLoggedIn = true;
 			ret = LOGIN_OK;
 			console.log( '[Login] ' + id + ', ' + pass );
             ret = login(sock,id,pass);
@@ -156,17 +154,16 @@ net.createServer ( function ( sock ) {
 		    sock.write ( ret ) ; 
         }
 		else if(type === LOGOUT){
-			IsLoggedIn = false;
+	        var strs = msg.split(/[\/,\n]+/);
 			ret = LOGOUT_OK;
-			console.log( 'logout( ' + id + ', ' + pass + ' )' );
+			console.log( '[Logout] user: ' + strs[0] );
 		    sock.write ( ret ) ;
-            logout_notify(id);
+            logout_notify(strs[0]);
 		}
 
 	} ) ; 
 	
 	sock.on ( 'close', function ( data ) { 
-		IsLoggedIn = false;
 		console.log ( 'CLOSED: '+sock.remoteAddress +' '+ sock.remotePort ) ;
         var index = client_socket.indexOf(sock);
         client_socket.splice(index,1);
