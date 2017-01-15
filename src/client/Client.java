@@ -11,11 +11,10 @@ import client.session.*;
 import client.ui.*;
 
 public class Client{
-	private static Queue<UiCallObject> fromUI; //read only
-	private static Queue<UiCallObject> toUI; //write only
-	private static Queue<String> fromServer; //write only
+	private static Queue<UiCallObject> fromUI;
+	private static Queue<UiCallObject> toUI;
+	private static Queue<String> fromServer;
 	private static UI ui;
-	//private static UI ui;
 	private static Socket socket;
 	private static PrintWriter out;
 	private static BufferedReader in;
@@ -46,7 +45,6 @@ public class Client{
 	
 	public static void initUI() {
 		ui = new client.ui.UI();
-		//ui = new client.ui.UI();
 		ui.setQueue(toUI, fromUI);
 	}
 
@@ -125,8 +123,6 @@ public class Client{
 
 	public static void run() {
 		while(!EXIT){
-			if(IsLoggedIn)
-				session.print();
 			if(!fromUI.isEmpty()) {
 				UiCallObject call = fromUI.peek();
 				if(call.type == UiCallObject.REQUEST){
@@ -177,12 +173,7 @@ public class Client{
 				}else{
 					fromUI.poll();
 				}
-			}else{
-				try{
-					Thread.sleep(100);
-				} catch(InterruptedException e){}
-			}
-			if(!fromServer.isEmpty()) {
+			} else if(!fromServer.isEmpty()) {
 				String[] strs = fromServer.peek().split("/");
 				if(strs[0].equals(Packet.NEWMSG)){
 					for(Room room : session.getroom()){
@@ -200,17 +191,13 @@ public class Client{
 				else if(strs[0].equals(Packet.ROOM_OK)){
 					String[] ids = new String[strs.length-2];
 					System.arraycopy(strs, 2, ids, 0, ids.length);
-					session.getroom().add(new Room(strs[1], ids)); //
-
-					////////////////////////////////
+					session.getroom().add(new Room(strs[1], ids));
 
 					RoomCall roomCall = new RoomCall(ids);
 					roomCall.response("success");
 					roomCall.setrid(strs[1]);
 					toUI.offer(roomCall);
 					System.out.println("[Room] OK, id = "+strs[1]);
-				
-					////////////////////////////////
 
 					fromServer.poll();
 				}else if(strs[0].equals(Packet.USR_IN)){
@@ -225,6 +212,10 @@ public class Client{
 					System.out.println("[GetFile] OK, rid = "+strs[1]+", owner = "+strs[2]+", filename = "+strs[3]);
 					fromServer.poll();
 				}
+			} else{
+				try{
+					Thread.sleep(100);
+				} catch(InterruptedException e){}
 			}
 		}
 	}
@@ -360,7 +351,7 @@ public class Client{
 		LogoutCall logoutCall = (LogoutCall)_call;
 		if(IsConnected){
 			if(IsLoggedIn){
-				String msg = Packet.makeMsg(Packet.LOGOUT);
+				String msg = Packet.makeMsg(Packet.LOGOUT, session.getuid());
 				String ret = "";
 				try{
 					out.println(msg);
@@ -369,14 +360,15 @@ public class Client{
 					fromServer.poll();
 					if(ret.equals(Packet.LOGOUT_OK)){
 						IsLoggedIn = false;
-						resetSession();
 						logoutCall.response("success");
 						toUI.offer(logoutCall);
 						System.out.println("[Logout] Success, user = "+session.getuid());
+						resetSession();
 					} else{
-						logoutCall.response("success"); // logout fails?
+						logoutCall.response("success");
 						toUI.offer(logoutCall);
 						System.out.println("[Logout] Success, user = "+session.getuid());
+						resetSession();
 					}
 				} catch(Exception e){
 					IsConnected = false;
@@ -489,7 +481,7 @@ public class Client{
 				String[] param = new String[roomCall.ids.length+1];
 				param[0] = Packet.ROOM;
 				System.arraycopy(roomCall.ids, 0, param, 1, roomCall.ids.length);
-				String msg = Packet.makeMsg(param); // include user himself
+				String msg = Packet.makeMsg(param);
 				String rets = "";
 				try{
 					out.println(msg);
