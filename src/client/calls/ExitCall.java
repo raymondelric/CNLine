@@ -6,6 +6,8 @@ public class ExitCall extends UiCallObject{
 	public ExitCall(){
 		super(EXIT, REQUEST);
 	}
+	public void response(String str){
+	}
 	public void print(){
 		System.out.println("wc:   "+this.whatCall);
 		System.out.println("type: "+this.type);
